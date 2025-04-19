@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Foxan</title>
+        <link rel="stylesheet" href="style.css">
+        <script>
+            const GRAVITY = 0.1;
+            var collisionMap = new Map();
+            function init() {
+                screen.start();
+                background = new Background("background.png");
+                player = new Object(0, "Player", "Circle", new Pair(800, 0), new Size(30, 0), 10, "#ffffff");
+                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new Size(1600, 50), 0, "#000000");
+            }
+            var screen = {
+                canvas: document.createElement("canvas"),
+                start: function() {
+                    this.canvas.width = 1600;
+                    this.canvas.height = 800;
+                    this.context = this.canvas.getContext("2d");
+                    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+                    this.interval = setInterval(updateScreen, 16 + 2 / 3);
+                    window.addEventListener('keydown', function (e) {
+                        screen.keys = (screen.keys || []);
+                        screen.keys[e.keyCode] = (e.type == "keydown");
+                    });
+                    window.addEventListener('keyup', function (e) {
+                        screen.keys = (screen.keys || []);
+                        screen.keys[e.keyCode] = (e.type == "keydown");
+                    });
+                },
+                clear: function() {
+                    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+            var keyboard = {
+                w: function() {
+                    if (screen.keys && (screen.keys[38] || screen.keys[87])) { return true }
+                    else {return false}
+                },
+                a: function() {
+                    if (screen.keys && (screen.keys[37] || screen.keys[65])) { return true }
+                    else {return false}
+                },
+                d: function() {
+                    if (screen.keys && (screen.keys[39] || screen.keys[68])) { return true }
+                    else {return false}
+                }
+            }
+            var playerController = {
+                up: function() {
+                    if (keyboard.w()) {
+                        player.speed.y = -3;
+                    }
+                },
+                left: function() {
+                    if (keyboard.a()) {
+                        if (player.speed.x > -4) {
+                            player.force.x = -2.5;
+                        }
+                        else {
+                            player.force.x = 0;
+                        }
+                    }
+                },
+                right: function() {
+                    if (keyboard.d()) {
+                        if (player.speed.x < 4) {
+                            player.force.x = 2.5;
+                        }
+                        else {
+                            player.force.x = 0;
+                        }
+                    }
+                },
+                idle: function() {
+                    if (!keyboard.a() && !keyboard.d()) {
+                        player.force.x = 0;
+                    }
+                }
+            }
+            function Background(image) {
+                this.draw = function() {
+                    this.image = new Image();
+                    this.image.src = "resources/images/" + image;
+                    screen.context.drawImage(this.image, 0, 0);
+                }
+            }
+            function Pair(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+            function Size(width, height) {
+                this.width = width;
+                this.height = height;
+            }
+            function Object(id, type, shape, position, size, mass, color) {
+                this.id = id;
+                this.type = type;
+                this.shape = shape;
+                this.position = position;
+                this.size = size;
+                this.mass = mass;
+                this.color = color;
+                this.acceleration = new Pair(0, 0);
+                this.speed = new Pair(0, 0);
+                this.force = new Pair(0, this.mass * GRAVITY);
+                let context = screen.context;
+                if (this.shape == "Rectangle") {
+                    this.draw = function() {
+                        context.fillStyle = this.color;
+                        context.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+                    }
+                }
+                else if (this.shape == "Circle") {
+                    this.draw = function() {
+                        context.beginPath();
+                        context.arc(this.position.x, this.position.y, this.size.width, 0, 2 * Math.PI);
+                        context.stroke();
+                        context.fillStyle = this.color;
+                        context.fill();
+                    }
+                }
+                if (this.type == "Player" || this.type == "Dynamic") {
+                    this.update = function() {
+                        this.force.y = collisionMap.get(this.id) + this.mass * GRAVITY;
+                        this.acceleration.y = this.force.y / this.mass;
+                        this.speed.y += this.acceleration.y;
+                        this.position.y += this.speed.y;
+                        this.acceleration.x = this.force.x / this.mass;
+                        this.speed.x += this.acceleration.x;
+                        this.position.x += this.speed.x;
+                    }
+                }
+            }
+            function collision(rectangle, circle) {
+                let delta = new Pair(0, 0);
+                delta.y = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
+                if (Math.abs(delta.y) < circle.size.width + rectangle.size.height / 2) {
+                    let momentum = circle.mass * circle.speed.y;
+                    let force = momentum / 1;
+                    collisionMap.set(circle.id, -force - circle.mass * GRAVITY - 2);
+                }
+                else {
+                    collisionMap.set(circle.id, 0);
+                }
+            }
+            function updateScreen() {
+                screen.clear();
+                playerController.up();
+                playerController.left();
+                playerController.right();
+                playerController.idle();
+                collision(ground, player);
+                player.update();
+                background.draw();
+                ground.draw();
+                player.draw();
+            }
+        </script>
+    </head>
+    <body>
+        <script>
+            init()
+        </script>
+    </body>
+</html>
