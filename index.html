@@ -5,12 +5,15 @@
         <link rel="stylesheet" href="style.css">
         <script>
             const GRAVITY = 0.1;
-            var collisionMap = new Map();
+            forceMap = Array(50).fill().map(()=>Array(50).fill(new Pair(0, 0)));
+            objects = []
             function init() {
                 screen.start();
                 background = new Background("background.png");
-                player = new Object(0, "Player", "Circle", new Pair(800, 0), new Size(30, 0), 10, "#ffffff");
-                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new Size(1600, 50), 0, "#000000");
+                player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, "#ffffff");
+                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, "#000000");
+                objects.push(player);
+                objects.push(ground);
             }
             var screen = {
                 canvas: document.createElement("canvas"),
@@ -56,26 +59,26 @@
                 left: function() {
                     if (keyboard.a()) {
                         if (player.speed.x > -4) {
-                            player.force.x = -2.5;
+                            forceMap[player.id][player.id].x = -2.5;
                         }
                         else {
-                            player.force.x = 0;
+                            forceMap[player.id][player.id].x = 0;
                         }
                     }
                 },
                 right: function() {
                     if (keyboard.d()) {
                         if (player.speed.x < 4) {
-                            player.force.x = 2.5;
+                            forceMap[player.id][player.id].x = 2.5;
                         }
                         else {
-                            player.force.x = 0;
+                            forceMap[player.id][player.id].x = 0;
                         }
                     }
                 },
                 idle: function() {
                     if (!keyboard.a() && !keyboard.d()) {
-                        player.force.x = 0;
+                        forceMap[player.id][player.id].x = 0;
                     }
                 }
             }
@@ -90,9 +93,12 @@
                 this.x = x;
                 this.y = y;
             }
-            function Size(width, height) {
+            function RectSize(width, height) {
                 this.width = width;
                 this.height = height;
+            }
+            function CircSize(radius) {
+                this.radius = radius;
             }
             function Object(id, type, shape, position, size, mass, color) {
                 this.id = id;
@@ -104,8 +110,9 @@
                 this.color = color;
                 this.acceleration = new Pair(0, 0);
                 this.speed = new Pair(0, 0);
-                this.force = new Pair(0, this.mass * GRAVITY);
+                this.force = new Pair(0, 0);
                 let context = screen.context;
+                forceMap[this.id][this.id].y = this.mass * GRAVITY;
                 if (this.shape == "Rectangle") {
                     this.draw = function() {
                         context.fillStyle = this.color;
@@ -115,7 +122,7 @@
                 else if (this.shape == "Circle") {
                     this.draw = function() {
                         context.beginPath();
-                        context.arc(this.position.x, this.position.y, this.size.width, 0, 2 * Math.PI);
+                        context.arc(this.position.x, this.position.y, this.size.radius, 0, 2 * Math.PI);
                         context.stroke();
                         context.fillStyle = this.color;
                         context.fill();
@@ -123,10 +130,11 @@
                 }
                 if (this.type == "Player" || this.type == "Dynamic") {
                     this.update = function() {
-                        this.force.y = collisionMap.get(this.id) + this.mass * GRAVITY;
+                        this.force.y = forceMap.reduce((sum, row) => sum + row[this.id].y, 0);
                         this.acceleration.y = this.force.y / this.mass;
                         this.speed.y += this.acceleration.y;
                         this.position.y += this.speed.y;
+                        this.force.x = forceMap.reduce((sum, row) => sum + row[this.id].x, 0);
                         this.acceleration.x = this.force.x / this.mass;
                         this.speed.x += this.acceleration.x;
                         this.position.x += this.speed.x;
@@ -136,13 +144,13 @@
             function collision(rectangle, circle) {
                 let delta = new Pair(0, 0);
                 delta.y = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
-                if (Math.abs(delta.y) < circle.size.width + rectangle.size.height / 2) {
+                if (Math.abs(delta.y) < circle.size.radius + rectangle.size.height / 2) {
                     let momentum = circle.mass * circle.speed.y;
                     let force = momentum / 1;
-                    collisionMap.set(circle.id, -force - circle.mass * GRAVITY - 2);
+                    forceMap[rectangle.id][circle.id].y = -force - circle.mass * GRAVITY - 2;
                 }
                 else {
-                    collisionMap.set(circle.id, 0);
+                    forceMap[rectangle.id][circle.id].y = 0;
                 }
             }
             function updateScreen() {
@@ -152,10 +160,13 @@
                 playerController.right();
                 playerController.idle();
                 collision(ground, player);
-                player.update();
                 background.draw();
-                ground.draw();
-                player.draw();
+                objects.forEach(object => {
+                    if (object.type != "Static") {
+                        object.update();
+                    }
+                    object.draw();
+                });
             }
         </script>
     </head>
