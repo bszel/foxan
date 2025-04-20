@@ -10,16 +10,18 @@
             objects = []
             function init() {
                 screen.start();
-                player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, "#ffffff");
-                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, "#000000");
-                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, "#00ff00");
-                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, "#000000");
+                player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, 0.3, "#ffffff");
+                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, 0.3, "#000000");
+                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 0.3, "#00ff00");
+                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, 0.5, "#000000");
                 objects.push(ground);
                 objects.push(player);
                 objects.push(rectangle);
                 objects.push(rightWall);
                 background = new Background("background.png");
                 playerSprite = new PlayerSprite("foxsprite.png")
+                text1 = new Text("30px", "Consolas", "#000000", 10, 25);
+                text2 = new Text("30px", "Consolas", "#000000", 10, 50);
             }
             var screen = {
                 canvas: document.createElement("canvas"),
@@ -122,13 +124,14 @@
             function CircSize(radius) {
                 this.radius = radius;
             }
-            function Object(id, type, shape, position, size, mass, color) {
+            function Object(id, type, shape, position, size, mass, friction, color) {
                 this.id = id;
                 this.type = type;
                 this.shape = shape;
                 this.position = position;
                 this.size = size;
                 this.mass = mass;
+                this.friction = friction;
                 this.color = color;
                 this.acceleration = new Pair(0, 0);
                 this.speed = new Pair(0, 0);
@@ -187,6 +190,17 @@
                     screen.context.drawImage(
                         this.image, fullWalking, 0, frameWidth, this.image.height, 
                         this.position.x, this.position.y, this.size.width, this.size.height);
+                }
+            }
+            function Text(width, height, color, x, y) {
+                this.width = width;
+                this.height = height;
+                this.x = x;
+                this.y = y;
+                this.update = function() {
+                    screen.context.font = this.width + " " + this.height;
+                    screen.context.fillstyle = color;
+                    screen.context.fillText(this.text, this.x, this.y);
                 }
             }
             function clamp(val, min_val, max_val) {
@@ -249,16 +263,21 @@
                 closest.y = clamp(circle.position.y, rectangle.position.y, rectangle.position.y + rectangle.size.height);
                 let distance = Math.sqrt((circle.position.x - closest.x) ** 2 + (circle.position.y - closest.y) ** 2);
                 if (distance < circle.size.radius) {
-                    let momentum = new Pair(0, 0);
-                    momentum.x = circle.mass * circle.speed.x;
-                    momentum.y = circle.mass * circle.speed.y;
-                    forceMap[rectangle.id][circle.id].x = -momentum.x;
-                    forceMap[circle.id][rectangle.id].x = momentum.x;
-                    forceMap[rectangle.id][circle.id].y = -momentum.y - circle.mass * GRAVITY;
-                    forceMap[circle.id][rectangle.id].y = momentum.y + circle.mass * GRAVITY;
+                    let circleMomentum = new Pair(0, 0);
+                    circleMomentum.x = circle.mass * circle.speed.x;
+                    circleMomentum.y = circle.mass * circle.speed.y;
+                    let rectMomentum = new Pair(0, 0);
+                    rectMomentum.x = rectangle.mass * rectangle.speed.x;
+                    rectMomentum.y = rectangle.mass * rectangle.speed.y;
+                    forceMap[rectangle.id][circle.id].x = rectMomentum.x * rectangle.friction * circle.friction - circleMomentum.x * rectangle.friction * circle.friction;
+                    forceMap[circle.id][rectangle.id].x = circleMomentum.x * rectangle.friction * circle.friction - rectMomentum.x * rectangle.friction * circle.friction;
+                    forceMap[rectangle.id][circle.id].y = rectMomentum.y * rectangle.friction * circle.friction - circleMomentum.y * rectangle.friction * circle.friction;
+                    forceMap[circle.id][rectangle.id].y = circleMomentum.y * rectangle.friction * circle.friction - rectMomentum.y * rectangle.friction * circle.friction;
                     pushCircle(circle, rectangle);
                     if (circle.type == "Player") {
-                        circle.jump = true;
+                        if (circle.speed.y >= 0) {
+                            circle.jump = true;
+                        }
                     }
                 }
                 else {
@@ -273,13 +292,16 @@
                 let dy = Math.max(0, Math.max(r2.position.y - (r1.position.y + r1.size.height), r1.position.y - (r2.position.y + r2.size.height)));
                 let distance = Math.sqrt(dx ** 2 + dy ** 2);
                 if (distance == 0) {
-                    let momentum = new Pair(0, 0);
-                    momentum.x = r2.mass * r2.speed.x;
-                    momentum.y = r2.mass * r2.speed.y;
-                    forceMap[r1.id][r2.id].x = -momentum.x;
-                    forceMap[r2.id][r1.id].x = momentum.x;
-                    forceMap[r1.id][r2.id].y = -momentum.y - r2.mass * GRAVITY;
-                    forceMap[r2.id][r1.id].y = momentum.y + r2.mass * GRAVITY;
+                    let r2Momentum = new Pair(0, 0);
+                    r2Momentum.x = r2.mass * r2.speed.x;
+                    r2Momentum.y = r2.mass * r2.speed.y;
+                    let r1Momentum = new Pair(0, 0);
+                    r1Momentum.x = r1.mass * r1.speed.x;
+                    r1Momentum.y = r1.mass * r1.speed.y;
+                    forceMap[r1.id][r2.id].x = r1Momentum.x * r1.friction * r2.friction - r2Momentum.x * r1.friction * r2.friction;
+                    forceMap[r2.id][r1.id].x = r2Momentum.x * r1.friction * r2.friction - r1Momentum.x * r1.friction * r2.friction;
+                    forceMap[r1.id][r2.id].y = r1Momentum.y * r1.friction * r2.friction - r2Momentum.y * r1.friction * r2.friction;
+                    forceMap[r2.id][r1.id].y = r2Momentum.y * r1.friction * r2.friction - r1Momentum.y * r1.friction * r2.friction;
                     if (r1.type == "Static") {
                         pushRectangle(r2, r1);
                     }
@@ -293,6 +315,12 @@
                     forceMap[r1.id][r2.id].y = 0;
                     forceMap[r2.id][r1.id].y = 0;
                 }
+            }
+            function debugText(object) {
+                text1.text = "Fx: " + object.force.x.toFixed(2) + " ax: " + object.acceleration.x.toFixed(2) + " vx: " + object.speed.x.toFixed(2);
+                text2.text = "Fy: " + object.force.y.toFixed(2) + " ay: " + object.acceleration.y.toFixed(2) + " vy: " + object.speed.y.toFixed(2);
+                text1.update();
+                text2.update();
             }
             function updateScreen() {
                 screen.clear();
@@ -322,6 +350,7 @@
                         object.update();
                     }
                 });
+                debugText(player);
             }
         </script>
     </head>
