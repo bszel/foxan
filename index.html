@@ -9,11 +9,12 @@
             objects = []
             function init() {
                 screen.start();
-                background = new Background("background.png");
                 player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, "#ffffff");
                 ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, "#000000");
-                objects.push(player);
                 objects.push(ground);
+                objects.push(player);
+                background = new Background("background.png");
+                playerSprite = new PlayerSprite("foxsprite.png")
             }
             var screen = {
                 canvas: document.createElement("canvas"),
@@ -54,6 +55,7 @@
                 up: function() {
                     if (keyboard.w()) {
                         player.speed.y = -3;
+                        playerSprite.playAnimation = false;
                     }
                 },
                 left: function() {
@@ -64,6 +66,8 @@
                         else {
                             forceMap[player.id][player.id].x = 0;
                         }
+                        playerSprite.side = 0;
+                        playerSprite.playAnimation = true;
                     }
                 },
                 right: function() {
@@ -74,12 +78,20 @@
                         else {
                             forceMap[player.id][player.id].x = 0;
                         }
+                        playerSprite.side = 1;
+                        playerSprite.playAnimation = true;
                     }
                 },
                 idle: function() {
                     if (!keyboard.a() && !keyboard.d()) {
                         forceMap[player.id][player.id].x = 0;
                     }
+                },
+                update: function() {
+                    this.left();
+                    this.right();
+                    this.up();
+                    this.idle();
                 }
             }
             function Background(image) {
@@ -141,6 +153,29 @@
                     }
                 }
             }
+            function PlayerSprite(image) {
+                this.image = new Image();
+                this.image.src = "resources/sprites/" + image;
+                this.size = new RectSize(138, 72);
+                this.position = new Pair(0, 0);
+                this.animCounter = 0;
+                this.side = 0;
+                this.playAnimation = false;
+                this.update = function() {
+                    if (this.playAnimation) {
+                        this.animCounter += 0.2;
+                        this.playAnimation = false;
+                    }
+                    this.position.x = player.position.x - (this.size.width / 5) * (2.02 + this.side);
+                    this.position.y = player.position.y - this.size.height / 2;
+                    let frameWidth = this.image.width / 16;
+                    let walkingMod = Math.floor(this.animCounter) % 8;
+                    let fullWalking = (this.side * 8 + walkingMod) * frameWidth;
+                    screen.context.drawImage(
+                        this.image, fullWalking, 0, frameWidth, this.image.height, 
+                        this.position.x, this.position.y, this.size.width, this.size.height);
+                }
+            }
             function collision(rectangle, circle) {
                 let delta = new Pair(0, 0);
                 delta.y = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
@@ -155,10 +190,7 @@
             }
             function updateScreen() {
                 screen.clear();
-                playerController.up();
-                playerController.left();
-                playerController.right();
-                playerController.idle();
+                playerController.update();
                 collision(ground, player);
                 background.draw();
                 objects.forEach(object => {
@@ -167,6 +199,7 @@
                     }
                     object.draw();
                 });
+                playerSprite.update();
             }
         </script>
     </head>
