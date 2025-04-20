@@ -5,14 +5,19 @@
         <link rel="stylesheet" href="style.css">
         <script>
             const GRAVITY = 0.1;
-            forceMap = Array(50).fill().map(()=>Array(50).fill(new Pair(0, 0)));
+            forceMap = Array(50).fill().map(() =>
+                Array(50).fill().map(() => new Pair(0, 0)));
             objects = []
             function init() {
                 screen.start();
                 player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, "#ffffff");
                 ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, "#000000");
+                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, "#00ff00");
+                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, "#000000");
                 objects.push(ground);
                 objects.push(player);
+                objects.push(rectangle);
+                objects.push(rightWall);
                 background = new Background("background.png");
                 playerSprite = new PlayerSprite("foxsprite.png")
             }
@@ -53,9 +58,10 @@
             }
             var playerController = {
                 up: function() {
-                    if (keyboard.w()) {
+                    if (player.jump && keyboard.w()) {
                         player.speed.y = -3;
                         playerSprite.playAnimation = false;
+                        player.jump = false;
                     }
                 },
                 left: function() {
@@ -67,7 +73,9 @@
                             forceMap[player.id][player.id].x = 0;
                         }
                         playerSprite.side = 0;
-                        playerSprite.playAnimation = true;
+                        if (player.jump) {
+                            playerSprite.playAnimation = true;
+                        }
                     }
                 },
                 right: function() {
@@ -79,7 +87,9 @@
                             forceMap[player.id][player.id].x = 0;
                         }
                         playerSprite.side = 1;
-                        playerSprite.playAnimation = true;
+                        if (player.jump) {
+                            playerSprite.playAnimation = true;
+                        }
                     }
                 },
                 idle: function() {
@@ -152,6 +162,9 @@
                         this.position.x += this.speed.x;
                     }
                 }
+                if (this.type == "Player") {
+                    this.jump = true;
+                }
             }
             function PlayerSprite(image) {
                 this.image = new Image();
@@ -176,30 +189,139 @@
                         this.position.x, this.position.y, this.size.width, this.size.height);
                 }
             }
-            function collision(rectangle, circle) {
-                let delta = new Pair(0, 0);
-                delta.y = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
-                if (Math.abs(delta.y) < circle.size.radius + rectangle.size.height / 2) {
-                    let momentum = circle.mass * circle.speed.y;
-                    let force = momentum / 1;
-                    forceMap[rectangle.id][circle.id].y = -force - circle.mass * GRAVITY - 2;
+            function clamp(val, min_val, max_val) {
+                return Math.max(min_val, Math.min(val, max_val));
+            }
+            function pushCircle(circle, rectangle) {
+                let left = circle.position.x - rectangle.position.x;
+                let right = rectangle.position.x + rectangle.size.width - circle.position.x;
+                let top = circle.position.y - rectangle.position.y;
+                let bottom = rectangle.position.y + rectangle.size.height - circle.position.y;
+                let min_dist = Math.min(left, right, top, bottom);
+                if (min_dist == left) {
+                    circle.position.x = rectangle.position.x - circle.size.radius;
+                }
+                else if (min_dist == right) {
+                    circle.position.x = rectangle.position.x + rectangle.size.width + circle.size.radius;
+                }
+                else if (min_dist == top) {
+                    circle.position.y = rectangle.position.y - circle.size.radius;
+                }
+                else if (min_dist == bottom) {
+                    circle.position.y = rectangle.position.y + rectangle.size.height + circle.size.radius;
+                }
+            }
+            function pushRectangle(r1, r2) {
+                let r1_x1 = r1.position.x;
+                let r1_x2 = r1.position.x + r1.size.width;
+                let r1_y1 = r1.position.y;
+                let r1_y2 = r1.position.y + r1.size.height;
+                let r2_x1 = r2.position.x;
+                let r2_x2 = r2.position.x + r2.size.width;
+                let r2_y1 = r2.position.y;
+                let r2_y2 = r2.position.y + r2.size.height;
+                let overlap_x = Math.min(r1_x2, r2_x2) - Math.max(r1_x1, r2_x1);
+                let overlap_y = Math.min(r1_y2, r2_y2) - Math.max(r1_y1, r2_y1);
+                if (overlap_x < overlap_y) {
+                    if (r1_x1 + r1.size.width / 2 < r2_x1 + r2.size.width / 2) {
+                        move_x = -overlap_x;
+                    }
+                    else {
+                        move_x = overlap_x;
+                    }
+                    move_y = 0;
                 }
                 else {
+                    if (r1_y1 + r1.size.height / 2 < r2_y1 + r2.size.height / 2) {
+                        move_y = -overlap_y;
+                    }
+                    else {
+                        move_y = overlap_y;
+                    }
+                    move_x = 0;
+                }
+                r1.position.x += move_x;
+                r1.position.y += move_y;
+            }
+            function collisionRC(rectangle, circle) {
+                let closest = new Pair(0, 0);
+                closest.x = clamp(circle.position.x, rectangle.position.x, rectangle.position.x + rectangle.size.width);
+                closest.y = clamp(circle.position.y, rectangle.position.y, rectangle.position.y + rectangle.size.height);
+                let distance = Math.sqrt((circle.position.x - closest.x) ** 2 + (circle.position.y - closest.y) ** 2);
+                if (distance < circle.size.radius) {
+                    let momentum = new Pair(0, 0);
+                    momentum.x = circle.mass * circle.speed.x;
+                    momentum.y = circle.mass * circle.speed.y;
+                    forceMap[rectangle.id][circle.id].x = -momentum.x;
+                    forceMap[circle.id][rectangle.id].x = momentum.x;
+                    forceMap[rectangle.id][circle.id].y = -momentum.y - circle.mass * GRAVITY;
+                    forceMap[circle.id][rectangle.id].y = momentum.y + circle.mass * GRAVITY;
+                    pushCircle(circle, rectangle);
+                    if (circle.type == "Player") {
+                        circle.jump = true;
+                    }
+                }
+                else {
+                    forceMap[rectangle.id][circle.id].x = 0;
+                    forceMap[circle.id][rectangle.id].x = 0;
                     forceMap[rectangle.id][circle.id].y = 0;
+                    forceMap[circle.id][rectangle.id].y = 0;
+                }
+            }
+            function collisionRR(r1, r2) {
+                let dx = Math.max(0, Math.max(r2.position.x - (r1.position.x + r1.size.width), r1.position.x - (r2.position.x + r2.size.width)));
+                let dy = Math.max(0, Math.max(r2.position.y - (r1.position.y + r1.size.height), r1.position.y - (r2.position.y + r2.size.height)));
+                let distance = Math.sqrt(dx ** 2 + dy ** 2);
+                if (distance == 0) {
+                    let momentum = new Pair(0, 0);
+                    momentum.x = r2.mass * r2.speed.x;
+                    momentum.y = r2.mass * r2.speed.y;
+                    forceMap[r1.id][r2.id].x = -momentum.x;
+                    forceMap[r2.id][r1.id].x = momentum.x;
+                    forceMap[r1.id][r2.id].y = -momentum.y - r2.mass * GRAVITY;
+                    forceMap[r2.id][r1.id].y = momentum.y + r2.mass * GRAVITY;
+                    if (r1.type == "Static") {
+                        pushRectangle(r2, r1);
+                    }
+                    else {
+                        pushRectangle(r1, r2);
+                    }
+                }
+                else {
+                    forceMap[r1.id][r2.id].x = 0;
+                    forceMap[r2.id][r1.id].x = 0;
+                    forceMap[r1.id][r2.id].y = 0;
+                    forceMap[r2.id][r1.id].y = 0;
                 }
             }
             function updateScreen() {
                 screen.clear();
-                playerController.update();
-                collision(ground, player);
                 background.draw();
+                playerController.update();
+                for (let i = 0; i < objects.length; i++) {
+                    for (let j = i + 1; j < objects.length; j++) {
+                        if (objects[i].type != "Static" || objects[j].type != "Static") {
+                            if (objects[i].shape == "Rectangle" && objects[j].shape == "Rectangle") {
+                                collisionRR(objects[i], objects[j]);
+                            }
+                            else if (objects[i].shape == "Rectangle" && objects[j].shape == "Circle") {
+                                collisionRC(objects[i], objects[j]);
+                            }
+                            else if (objects[i].shape == "Circle" && objects[j].shape == "Rectangle") {
+                                collisionRC(objects[j], objects[i]);
+                            }
+                        }
+                    }
+                }
+                objects.forEach(object => {
+                    object.draw();
+                });
+                playerSprite.update();
                 objects.forEach(object => {
                     if (object.type != "Static") {
                         object.update();
                     }
-                    object.draw();
                 });
-                playerSprite.update();
             }
         </script>
     </head>
