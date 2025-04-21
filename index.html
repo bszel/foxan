@@ -39,6 +39,10 @@
                         screen.keys = (screen.keys || []);
                         screen.keys[e.keyCode] = (e.type == "keydown");
                     });
+                    window.addEventListener('mousedown', function (e) {
+                        player.position.x = e.clientX - 160;
+                        player.position.y = e.clientY - 80;
+                    });
                 },
                 clear: function() {
                     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -131,13 +135,15 @@
                 this.position = position;
                 this.size = size;
                 this.mass = mass;
+                if (this.type == "Static") {
+                    this.mass = 999999999;
+                }
                 this.friction = friction;
                 this.color = color;
                 this.acceleration = new Pair(0, 0);
                 this.speed = new Pair(0, 0);
                 this.force = new Pair(0, 0);
                 let context = screen.context;
-                forceMap[this.id][this.id].y = this.mass * GRAVITY;
                 if (this.shape == "Rectangle") {
                     this.draw = function() {
                         context.fillStyle = this.color;
@@ -154,6 +160,7 @@
                     }
                 }
                 if (this.type == "Player" || this.type == "Dynamic") {
+                    forceMap[this.id][this.id].y = this.mass * GRAVITY;
                     this.update = function() {
                         this.force.y = forceMap.reduce((sum, row) => sum + row[this.id].y, 0);
                         this.acceleration.y = this.force.y / this.mass;
@@ -269,10 +276,21 @@
                     let rectMomentum = new Pair(0, 0);
                     rectMomentum.x = rectangle.mass * rectangle.speed.x;
                     rectMomentum.y = rectangle.mass * rectangle.speed.y;
-                    forceMap[rectangle.id][circle.id].x = rectMomentum.x * rectangle.friction * circle.friction - circleMomentum.x * rectangle.friction * circle.friction;
-                    forceMap[circle.id][rectangle.id].x = circleMomentum.x * rectangle.friction * circle.friction - rectMomentum.x * rectangle.friction * circle.friction;
-                    forceMap[rectangle.id][circle.id].y = rectMomentum.y * rectangle.friction * circle.friction - circleMomentum.y * rectangle.friction * circle.friction;
-                    forceMap[circle.id][rectangle.id].y = circleMomentum.y * rectangle.friction * circle.friction - rectMomentum.y * rectangle.friction * circle.friction;
+                    let newSpeed = new Pair(0, 0);
+                    newSpeed.x = (circleMomentum.x + rectMomentum.x) / (circle.mass + rectangle.mass);
+                    newSpeed.y = (circleMomentum.y + rectMomentum.y) / (circle.mass + rectangle.mass);
+                    if (rectangle.type != "Static") {
+                        rectangle.speed.x = newSpeed.x;
+                        rectangle.speed.y = newSpeed.y;
+                        forceMap[circle.id][rectangle.id].x = forceMap[circle.id][circle.id].x - forceMap[rectangle.id][rectangle.id].x;
+                        forceMap[circle.id][rectangle.id].y = forceMap[circle.id][circle.id].y;
+                    }
+                    if (circle.type != "Static") {
+                        circle.speed.x = newSpeed.x;
+                        circle.speed.y = newSpeed.y;
+                        forceMap[rectangle.id][circle.id].x = forceMap[rectangle.id][rectangle.id].x - forceMap[circle.id][circle.id].x;
+                        forceMap[rectangle.id][circle.id].y = -forceMap[circle.id][circle.id].y;
+                    }
                     pushCircle(circle, rectangle);
                     if (circle.type == "Player") {
                         if (circle.speed.y >= 0) {
@@ -298,10 +316,21 @@
                     let r1Momentum = new Pair(0, 0);
                     r1Momentum.x = r1.mass * r1.speed.x;
                     r1Momentum.y = r1.mass * r1.speed.y;
-                    forceMap[r1.id][r2.id].x = r1Momentum.x * r1.friction * r2.friction - r2Momentum.x * r1.friction * r2.friction;
-                    forceMap[r2.id][r1.id].x = r2Momentum.x * r1.friction * r2.friction - r1Momentum.x * r1.friction * r2.friction;
-                    forceMap[r1.id][r2.id].y = r1Momentum.y * r1.friction * r2.friction - r2Momentum.y * r1.friction * r2.friction;
-                    forceMap[r2.id][r1.id].y = r2Momentum.y * r1.friction * r2.friction - r1Momentum.y * r1.friction * r2.friction;
+                    let newSpeed = new Pair(0, 0);
+                    newSpeed.x = (r1Momentum.x + r2Momentum.x) / (r1.mass + r2.mass);
+                    newSpeed.y = (r1Momentum.y + r2Momentum.y) / (r1.mass + r2.mass);
+                    if (r1.type != "Static") {
+                        r1.speed.x = newSpeed.x;
+                        r1.speed.y = newSpeed.y;
+                        forceMap[r2.id][r1.id].x = forceMap[r2.id][r2.id].x - forceMap[r1.id][r1.id].x;
+                        forceMap[r2.id][r1.id].y = -forceMap[r1.id][r1.id].y;
+                    }
+                    if (r2.type != "Static") {
+                        r2.speed.x = newSpeed.x;
+                        r2.speed.y = newSpeed.y;
+                        forceMap[r1.id][r2.id].x = forceMap[r1.id][r1.id].x - forceMap[r2.id][r2.id].x;
+                        forceMap[r1.id][r2.id].y = forceMap[r1.id][r1.id].y;
+                    }
                     if (r1.type == "Static") {
                         pushRectangle(r2, r1);
                     }
@@ -326,6 +355,11 @@
                 screen.clear();
                 background.draw();
                 playerController.update();
+                objects.forEach(object => {
+                    if (object.type != "Static") {
+                        object.update();
+                    }
+                });
                 for (let i = 0; i < objects.length; i++) {
                     for (let j = i + 1; j < objects.length; j++) {
                         if (objects[i].type != "Static" || objects[j].type != "Static") {
@@ -345,11 +379,6 @@
                     object.draw();
                 });
                 playerSprite.update();
-                objects.forEach(object => {
-                    if (object.type != "Static") {
-                        object.update();
-                    }
-                });
                 debugText(player);
             }
         </script>
