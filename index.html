@@ -11,9 +11,9 @@
             function init() {
                 screen.start();
                 player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, 0.3, 0, "#ffffff");
-                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, 0.3, 10, "#000000");
+                ground = new Object(1, "Static", "Rectangle", new Pair(800, 750), new RectSize(1600, 50), 0, 0.3, 10, "#000000");
                 rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 0.3, 0, "#00ff00");
-                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, 0.5, -10, "#000000");
+                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 400), new RectSize(50, 800), 0, 0.5, -10, "#000000");
                 objects.push(ground);
                 objects.push(player);
                 objects.push(rectangle);
@@ -139,7 +139,7 @@
                     this.mass = 999999999;
                 }
                 this.friction = friction;
-                this.rotation = rotation;
+                this.rotation = rotation * Math.PI / 180;
                 this.color = color;
                 this.acceleration = new Pair(0, 0);
                 this.speed = new Pair(0, 0);
@@ -148,13 +148,13 @@
                 if (this.shape == "Rectangle") {
                     this.draw = function() {
                         context.fillStyle = this.color;
-                        context.translate((this.position.x + this.size.width / 2), (this.position.y + this.size.height / 2));
-                        context.rotate((this.rotation * Math.PI) / 180);
-                        context.translate(-(this.position.x + this.size.width / 2), -(this.position.y + this.size.height / 2));
-                        context.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
-                        context.translate((this.position.x + this.size.width / 2), (this.position.y + this.size.height / 2));
-                        context.rotate((-this.rotation * Math.PI) / 180);
-                        context.translate(-(this.position.x + this.size.width / 2), -(this.position.y + this.size.height / 2));
+                        context.translate(this.position.x, this.position.y);
+                        context.rotate(this.rotation);
+                        context.translate(-this.position.x, -this.position.y);
+                        context.fillRect(this.position.x - this.size.width / 2, this.position.y - this.size.height / 2, this.size.width, this.size.height);
+                        context.translate(this.position.x, this.position.y);
+                        context.rotate(-this.rotation);
+                        context.translate(-this.position.x, -this.position.y);
                     }
                 }
                 else if (this.shape == "Circle") {
@@ -220,68 +220,20 @@
             function clamp(val, min_val, max_val) {
                 return Math.max(min_val, Math.min(val, max_val));
             }
-            function pushCircle(circle, rectangle) {
-                let left = circle.position.x - rectangle.position.x;
-                let right = rectangle.position.x + rectangle.size.width - circle.position.x;
-                let top = circle.position.y - rectangle.position.y;
-                let bottom = rectangle.position.y + rectangle.size.height - circle.position.y;
-                let min_dist = Math.min(left, right, top, bottom);
-                if (min_dist == left) {
-                    circle.position.x = rectangle.position.x - circle.size.radius;
-                }
-                else if (min_dist == right) {
-                    circle.position.x = rectangle.position.x + rectangle.size.width + circle.size.radius;
-                }
-                else if (min_dist == top) {
-                    circle.position.y = rectangle.position.y - circle.size.radius;
-                }
-                else if (min_dist == bottom) {
-                    circle.position.y = rectangle.position.y + rectangle.size.height + circle.size.radius;
-                }
-            }
-            function pushRectangle(r1, r2) {
-                let r1_x1 = r1.position.x;
-                let r1_x2 = r1.position.x + r1.size.width;
-                let r1_y1 = r1.position.y;
-                let r1_y2 = r1.position.y + r1.size.height;
-                let r2_x1 = r2.position.x;
-                let r2_x2 = r2.position.x + r2.size.width;
-                let r2_y1 = r2.position.y;
-                let r2_y2 = r2.position.y + r2.size.height;
-                let overlap_x = Math.min(r1_x2, r2_x2) - Math.max(r1_x1, r2_x1);
-                let overlap_y = Math.min(r1_y2, r2_y2) - Math.max(r1_y1, r2_y1);
-                if (overlap_x < overlap_y) {
-                    if (r1_x1 + r1.size.width / 2 < r2_x1 + r2.size.width / 2) {
-                        move_x = -overlap_x;
-                    }
-                    else {
-                        move_x = overlap_x;
-                    }
-                    move_y = 0;
-                }
-                else {
-                    if (r1_y1 + r1.size.height / 2 < r2_y1 + r2.size.height / 2) {
-                        move_y = -overlap_y;
-                    }
-                    else {
-                        move_y = overlap_y;
-                    }
-                    move_x = 0;
-                }
-                r1.position.x += move_x;
-                r1.position.y += move_y;
-            }
-            function collisionRC(rectangle, circle) {
-                let dx = circle.position.x - (rectangle.position.x + rectangle.size.width / 2);
-                let dy = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
-                let cos = Math.cos(-rectangle.rotation * Math.PI / 180);
-                let sin = Math.sin(-rectangle.rotation * Math.PI / 180);
+            function collidesRC(rectangle, circle) {
+                let dx = circle.position.x - rectangle.position.x;
+                let dy = circle.position.y - rectangle.position.y;
+                let cos = Math.cos(-rectangle.rotation);
+                let sin = Math.sin(-rectangle.rotation);
                 let localCircleX = dx * cos - dy * sin;
                 let localCircleY = dx * sin + dy * cos;
                 let closestX = clamp(localCircleX, -rectangle.size.width / 2, rectangle.size.width / 2);
                 let closestY = clamp(localCircleY, -rectangle.size.height / 2, rectangle.size.height / 2);
                 let distance = Math.sqrt((localCircleX - closestX) ** 2 + (localCircleY - closestY) ** 2);
-                if (distance < circle.size.radius) {
+                return distance < circle.size.radius;
+            }
+            function collisionRC(rectangle, circle) {
+                if (collidesRC(rectangle, circle)) {
                     let circleMomentum = new Pair(0, 0);
                     circleMomentum.x = circle.mass * circle.speed.x;
                     circleMomentum.y = circle.mass * circle.speed.y;
@@ -303,7 +255,6 @@
                         forceMap[rectangle.id][circle.id].x = forceMap[rectangle.id][rectangle.id].x - forceMap[circle.id][circle.id].x;
                         forceMap[rectangle.id][circle.id].y = -forceMap[circle.id][circle.id].y;
                     }
-                    // pushCircle(circle, rectangle);
                     if (circle.type == "Player") {
                         if (circle.speed.y >= 0) {
                             circle.jump = true;
@@ -317,11 +268,62 @@
                     forceMap[circle.id][rectangle.id].y = 0;
                 }
             }
+            function getCorners(rectangle) {
+                let cx = rectangle.position.x;
+                let cy = rectangle.position.y;
+                let w = rectangle.size.width;
+                let h = rectangle.size.height;
+                let cos = Math.cos(rectangle.rotation);
+                let sin = Math.sin(rectangle.rotation);
+                let hw = w / 2;
+                let hh = h / 2;
+                return [
+                    { x: cx + cos * -hw - sin * -hh, y: cy + sin * -hw + cos * -hh }, // top-left
+                    { x: cx + cos * hw - sin * -hh,  y: cy + sin * hw + cos * -hh },  // top-right
+                    { x: cx + cos * hw - sin * hh,   y: cy + sin * hw + cos * hh },   // bottom-right
+                    { x: cx + cos * -hw - sin * hh,  y: cy + sin * -hw + cos * hh }   // bottom-left
+                ];
+            }
+            function getAxes(points) {
+                let axes = [];
+                for (let i = 0; i < points.length; i++) {
+                    let p1 = points[i];
+                    let p2 = points[(i + 1) % points.length];
+                    let edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+                    let normal = { x: -edge.y, y: edge.x };
+                    let length = Math.hypot(normal.x, normal.y);
+                    axes.push({ x: normal.x / length, y: normal.y / length });
+                }
+                return axes;
+            }
+            function projectPolygon(axis, points) {
+                let min = Infinity;
+                let max = -Infinity;
+                for (let p of points) {
+                    let projection = p.x * axis.x + p.y * axis.y;
+                    min = Math.min(min, projection);
+                    max = Math.max(max, projection);
+                }
+                return { min, max };
+            }
+            function isOverlapping(proj1, proj2) {
+                return proj1.max >= proj2.min && proj2.max >= proj1.min;
+            }
+            function collidesRR(r1, r2) {
+                let corners1 = getCorners(r1);
+                let corners2 = getCorners(r2);
+                let axes = getAxes(corners1).concat(getAxes(corners2));
+                for (let axis of axes) {
+                    let proj1 = projectPolygon(axis, corners1);
+                    let proj2 = projectPolygon(axis, corners2);
+                    if (!isOverlapping(proj1, proj2)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
             function collisionRR(r1, r2) {
-                let dx = Math.max(0, Math.max(r2.position.x - (r1.position.x + r1.size.width), r1.position.x - (r2.position.x + r2.size.width)));
-                let dy = Math.max(0, Math.max(r2.position.y - (r1.position.y + r1.size.height), r1.position.y - (r2.position.y + r2.size.height)));
-                let distance = Math.sqrt(dx ** 2 + dy ** 2);
-                if (distance == 0) {
+                if (collidesRR(r1, r2)) {
                     let r2Momentum = new Pair(0, 0);
                     r2Momentum.x = r2.mass * r2.speed.x;
                     r2Momentum.y = r2.mass * r2.speed.y;
@@ -342,12 +344,6 @@
                         r2.speed.y = newSpeed.y;
                         forceMap[r1.id][r2.id].x = forceMap[r1.id][r1.id].x - forceMap[r2.id][r2.id].x;
                         forceMap[r1.id][r2.id].y = forceMap[r1.id][r1.id].y;
-                    }
-                    if (r1.type == "Static") {
-                        pushRectangle(r2, r1);
-                    }
-                    else {
-                        pushRectangle(r1, r2);
                     }
                 }
                 else {
