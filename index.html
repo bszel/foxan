@@ -10,10 +10,10 @@
             objects = []
             function init() {
                 screen.start();
-                player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, 0.3, "#ffffff");
-                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, 0.3, "#000000");
-                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 0.3, "#00ff00");
-                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, 0.5, "#000000");
+                player = new Object(0, "Player", "Circle", new Pair(800, 0), new CircSize(30), 10, 0.3, 0, "#ffffff");
+                ground = new Object(1, "Static", "Rectangle", new Pair(0, 750), new RectSize(1600, 50), 0, 0.3, 10, "#000000");
+                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 0.3, 0, "#00ff00");
+                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 0), new RectSize(50, 800), 0, 0.5, -10, "#000000");
                 objects.push(ground);
                 objects.push(player);
                 objects.push(rectangle);
@@ -128,7 +128,7 @@
             function CircSize(radius) {
                 this.radius = radius;
             }
-            function Object(id, type, shape, position, size, mass, friction, color) {
+            function Object(id, type, shape, position, size, mass, friction, rotation, color) {
                 this.id = id;
                 this.type = type;
                 this.shape = shape;
@@ -139,6 +139,7 @@
                     this.mass = 999999999;
                 }
                 this.friction = friction;
+                this.rotation = rotation;
                 this.color = color;
                 this.acceleration = new Pair(0, 0);
                 this.speed = new Pair(0, 0);
@@ -147,7 +148,13 @@
                 if (this.shape == "Rectangle") {
                     this.draw = function() {
                         context.fillStyle = this.color;
+                        context.translate((this.position.x + this.size.width / 2), (this.position.y + this.size.height / 2));
+                        context.rotate((this.rotation * Math.PI) / 180);
+                        context.translate(-(this.position.x + this.size.width / 2), -(this.position.y + this.size.height / 2));
                         context.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+                        context.translate((this.position.x + this.size.width / 2), (this.position.y + this.size.height / 2));
+                        context.rotate((-this.rotation * Math.PI) / 180);
+                        context.translate(-(this.position.x + this.size.width / 2), -(this.position.y + this.size.height / 2));
                     }
                 }
                 else if (this.shape == "Circle") {
@@ -265,10 +272,15 @@
                 r1.position.y += move_y;
             }
             function collisionRC(rectangle, circle) {
-                let closest = new Pair(0, 0);
-                closest.x = clamp(circle.position.x, rectangle.position.x, rectangle.position.x + rectangle.size.width);
-                closest.y = clamp(circle.position.y, rectangle.position.y, rectangle.position.y + rectangle.size.height);
-                let distance = Math.sqrt((circle.position.x - closest.x) ** 2 + (circle.position.y - closest.y) ** 2);
+                let dx = circle.position.x - (rectangle.position.x + rectangle.size.width / 2);
+                let dy = circle.position.y - (rectangle.position.y + rectangle.size.height / 2);
+                let cos = Math.cos(-rectangle.rotation * Math.PI / 180);
+                let sin = Math.sin(-rectangle.rotation * Math.PI / 180);
+                let localCircleX = dx * cos - dy * sin;
+                let localCircleY = dx * sin + dy * cos;
+                let closestX = clamp(localCircleX, -rectangle.size.width / 2, rectangle.size.width / 2);
+                let closestY = clamp(localCircleY, -rectangle.size.height / 2, rectangle.size.height / 2);
+                let distance = Math.sqrt((localCircleX - closestX) ** 2 + (localCircleY - closestY) ** 2);
                 if (distance < circle.size.radius) {
                     let circleMomentum = new Pair(0, 0);
                     circleMomentum.x = circle.mass * circle.speed.x;
@@ -291,7 +303,7 @@
                         forceMap[rectangle.id][circle.id].x = forceMap[rectangle.id][rectangle.id].x - forceMap[circle.id][circle.id].x;
                         forceMap[rectangle.id][circle.id].y = -forceMap[circle.id][circle.id].y;
                     }
-                    pushCircle(circle, rectangle);
+                    // pushCircle(circle, rectangle);
                     if (circle.type == "Player") {
                         if (circle.speed.y >= 0) {
                             circle.jump = true;
