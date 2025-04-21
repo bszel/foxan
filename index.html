@@ -220,20 +220,72 @@
             function clamp(val, min_val, max_val) {
                 return Math.max(min_val, Math.min(val, max_val));
             }
-            function collidesRC(rectangle, circle) {
-                let dx = circle.position.x - rectangle.position.x;
-                let dy = circle.position.y - rectangle.position.y;
-                let cos = Math.cos(-rectangle.rotation);
-                let sin = Math.sin(-rectangle.rotation);
-                let localCircleX = dx * cos - dy * sin;
-                let localCircleY = dx * sin + dy * cos;
-                let closestX = clamp(localCircleX, -rectangle.size.width / 2, rectangle.size.width / 2);
-                let closestY = clamp(localCircleY, -rectangle.size.height / 2, rectangle.size.height / 2);
-                let distance = Math.sqrt((localCircleX - closestX) ** 2 + (localCircleY - closestY) ** 2);
-                return distance < circle.size.radius;
+            function projectCircle(axis, circleCenter, radius) {
+                let centerProj = circleCenter.x * axis.x + circleCenter.y * axis.y;
+                return {
+                    min: centerProj - radius,
+                    max: centerProj + radius
+                };
+            }
+            function getClosestPointOnOBB(circle, rect) {
+                let dx = circle.position.x - rect.position.x;
+                let dy = circle.position.y - rect.position.y;
+                let cos = Math.cos(-rect.rotation);
+                let sin = Math.sin(-rect.rotation);
+                let localX = dx * cos - dy * sin;
+                let localY = dx * sin + dy * cos;
+                let hw = rect.size.width / 2;
+                let hh = rect.size.height / 2;
+                let clampedX = clamp(localX, -hw, hw);
+                let clampedY = clamp(localY, -hh, hh);
+                let worldX = clampedX * cos + clampedY * -sin + rect.position.x;
+                let worldY = clampedX * sin + clampedY * cos + rect.position.y;
+                return { x: worldX, y: worldY };
+            }
+            function collidesRC(rect, circle) {
+                let rectCorners = getCorners(rect);
+                let axes = getAxes(rectCorners);
+                let closest = getClosestPointOnOBB(circle, rect);
+                let axisToCircle = {
+                    x: circle.position.x - closest.x,
+                    y: circle.position.y - closest.y
+                };
+                let len = Math.hypot(axisToCircle.x, axisToCircle.y);
+                if (len !== 0) {
+                    axisToCircle.x /= len;
+                    axisToCircle.y /= len;
+                    axes.push(axisToCircle);
+                }
+                let smallestOverlap = Infinity;
+                let mtvAxis = null;
+                for (let axis of axes) {
+                    let rectProj = projectPolygon(axis, rectCorners);
+                    let circleProj = projectCircle(axis, circle.position, circle.size.radius);
+                    if (!isOverlapping(rectProj, circleProj)) {
+                        return { colliding: false, mtv: null };
+                    }
+                    let overlap = Math.min(rectProj.max, circleProj.max) - Math.max(rectProj.min, circleProj.min);
+                    if (overlap < smallestOverlap) {
+                        smallestOverlap = overlap;
+                        let direction = {
+                            x: circle.position.x - rect.position.x,
+                            y: circle.position.y - rect.position.y
+                        };
+                        let dot = direction.x * axis.x + direction.y * axis.y;
+                        mtvAxis = dot < 0 ? { x: -axis.x, y: -axis.y } : axis;
+                    }
+                }
+                let mtv = {
+                    x: mtvAxis.x * smallestOverlap,
+                    y: mtvAxis.y * smallestOverlap
+                };
+                return { colliding: true, mtv };
             }
             function collisionRC(rectangle, circle) {
-                if (collidesRC(rectangle, circle)) {
+                let result = collidesRC(rectangle, circle);
+                if (result.colliding) {
+                    circle.position.x += result.mtv.x / 2;
+                    circle.position.y += result.mtv.y / 2;
                     let circleMomentum = new Pair(0, 0);
                     circleMomentum.x = circle.mass * circle.speed.x;
                     circleMomentum.y = circle.mass * circle.speed.y;
@@ -313,17 +365,36 @@
                 let corners1 = getCorners(r1);
                 let corners2 = getCorners(r2);
                 let axes = getAxes(corners1).concat(getAxes(corners2));
+                let smallestOverlap = Infinity;
+                let mtvAxis = null;
                 for (let axis of axes) {
                     let proj1 = projectPolygon(axis, corners1);
                     let proj2 = projectPolygon(axis, corners2);
                     if (!isOverlapping(proj1, proj2)) {
-                        return false;
+                        return { colliding: false, mtv: null };
+                    }
+                    let overlap = Math.min(proj1.max, proj2.max) - Math.max(proj1.min, proj2.min);
+                    if (overlap < smallestOverlap) {
+                        smallestOverlap = overlap;
+                        let d = {
+                            x: r2.position.x - r1.position.x,
+                            y: r2.position.y - r1.position.y
+                        };
+                        let dot = d.x * axis.x + d.y * axis.y;
+                        mtvAxis = dot < 0 ? { x: -axis.x, y: -axis.y } : axis;
                     }
                 }
-                return true;
+                let mtv = {
+                    x: mtvAxis.x * smallestOverlap,
+                    y: mtvAxis.y * smallestOverlap
+                };
+                return { colliding: true, mtv };
             }
             function collisionRR(r1, r2) {
-                if (collidesRR(r1, r2)) {
+                let result = collidesRR(r1, r2);
+                if (result.colliding) {
+                    r1.position.x -= result.mtv.x / 2;
+                    r1.position.y -= result.mtv.y / 2;
                     let r2Momentum = new Pair(0, 0);
                     r2Momentum.x = r2.mass * r2.speed.x;
                     r2Momentum.y = r2.mass * r2.speed.y;
@@ -372,7 +443,12 @@
                     for (let j = i + 1; j < objects.length; j++) {
                         if (objects[i].type != "Static" || objects[j].type != "Static") {
                             if (objects[i].shape == "Rectangle" && objects[j].shape == "Rectangle") {
-                                collisionRR(objects[i], objects[j]);
+                                if (objects[i].type == "Static") {
+                                    collisionRR(objects[j], objects[i]);
+                                }
+                                else {
+                                    collisionRR(objects[i], objects[j]);
+                                }
                             }
                             else if (objects[i].shape == "Rectangle" && objects[j].shape == "Circle") {
                                 collisionRC(objects[i], objects[j]);
