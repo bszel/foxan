@@ -11,11 +11,11 @@
             function init() {
                 screen.start();
                 player = new Object(0, "Player", "Circle", new Pair(1300, 400), new CircSize(30), 10, 0.3, 0, "#ffffff");
-                ground = new Object(1, "Static", "Rectangle", new Pair(800, 750), new RectSize(1600, 50), 0, 0.3, 45, "#000000");
-                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 0.3, 0, "#00ff00");
+                ground = new Object(1, "Static", "Rectangle", new Pair(800, 750), new RectSize(1600, 50), 0, 2, 45, "#000000");
+                rectangle = new Object(2, "Dynamic", "Rectangle", new Pair(400, 200), new RectSize(50, 100), 10, 100, 0, "#00ff00");
                 rectangle2 = new Object(6, "Dynamic", "Rectangle", new Pair(1000, 200), new RectSize(50, 75), 30, 0.3, 0, "#0000ff");
-                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 400), new RectSize(50, 800), 0, 0.5, -10, "#000000");
-                ground2 = new Object(4, "Static", "Rectangle", new Pair(800, 750), new RectSize(1600, 50), 0, 0.3, 0, "#000000");
+                rightWall = new Object(3, "Static", "Rectangle", new Pair(1500, 400), new RectSize(50, 800), 0, 1, -10, "#000000");
+                ground2 = new Object(4, "Static", "Rectangle", new Pair(800, 750), new RectSize(1600, 50), 0, 2, 0, "#000000");
                 ground3 = new Object(5, "Static", "Rectangle", new Pair(100, 700), new RectSize(50, 50), 0, 0.3, 0, "#000000");
                 objects.push(ground);
                 objects.push(ground2);
@@ -296,6 +296,9 @@
                 if (length === 0) return { x: 0, y: 0};
                 return { x: vec.x / length, y: vec.y / length };
             }
+            function getTangent(vec) {
+                return {x: -vec.y, y: vec.x};
+            }
             function collisionRC(rectangle, circle) {
                 let result = collidesRC(rectangle, circle);
                 if (result.colliding) {
@@ -309,16 +312,34 @@
 
                     let normal = normalize(mtv);
                     let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
-
+                    let tangent = normalize(getTangent(normal));
                     let netForce = {
                         x: forceMap[circle.id][circle.id].x - forceMap[rectangle.id][rectangle.id].x,
                         y: forceMap[circle.id][circle.id].y - forceMap[rectangle.id][rectangle.id].y
                     };
-                    let forceAlongNormal = dot([normal.x, normal.y], [netForce.x, netForce.y]);
-                    let normalForceMagnitude = forceAlongNormal < 0 ? -forceAlongNormal : 0;
-                    let normalForce = setVectorMagnitude(mtv, normalForceMagnitude);
-
                     let relativeSpeed = { x: rectangle.speed.x - circle.speed.x, y: rectangle.speed.y - circle.speed.y };
+                    
+                    let normalForceMagnitude = 0;
+                    if (normal.y < 0) {
+                        normalForceMagnitude = dot([normal.x, normal.y], [forceMap[circle.id][circle.id].x - forceMap[rectangle.id][rectangle.id].x, forceMap[circle.id][circle.id].y]);
+                    }
+                    else {
+                        normalForceMagnitude = dot([normal.x, normal.y], [forceMap[circle.id][circle.id].x - forceMap[rectangle.id][rectangle.id].x, -forceMap[rectangle.id][rectangle.id].y]);
+                    }
+                    let normalForce = setVectorMagnitude(mtv, -normalForceMagnitude);
+
+                    let tangentSpeed = dot([tangent.x, tangent.y], [relativeSpeed.x, relativeSpeed.y]);
+                    let tangentDirection = setVectorMagnitude(tangent, tangentSpeed);
+                    let frictionalForceMagnitude = circle.friction * rectangle.friction * normalForceMagnitude;
+                    let forceNeeded = tangentSpeed * circle.mass;
+                    let frictionalForce = 0;
+                    if (Math.abs(forceNeeded) < Math.abs(frictionalForceMagnitude)) {
+                        frictionalForce = { x: -relativeSpeed.x, y: -relativeSpeed.y };
+                    }
+                    else {
+                        frictionalForce = setVectorMagnitude(tangentDirection, frictionalForceMagnitude);
+                    }
+
                     let relativeSpeedNormal = dot([normal.x, normal.y], [relativeSpeed.x, relativeSpeed.y]);
                     let normalImpulseMagnitude = -relativeSpeedNormal / (1 / circle.mass + 1 / rectangle.mass);
                     let normalImpulse = setVectorMagnitude(mtv, normalImpulseMagnitude);
@@ -326,14 +347,14 @@
                     if (rectangle.type != "Static") {
                         rectangle.speed.x += normalImpulse.x / rectangle.mass;
                         rectangle.speed.y += normalImpulse.y / rectangle.mass;
-                        forceMap[circle.id][rectangle.id].x = -normalForce.x;
-                        forceMap[circle.id][rectangle.id].y = -normalForce.y;
+                        forceMap[circle.id][rectangle.id].x = -(normalForce.x - frictionalForce.x);
+                        forceMap[circle.id][rectangle.id].y = -(normalForce.y - frictionalForce.y);
                     }
                     if (circle.type != "Static") {
                         circle.speed.x -= normalImpulse.x / circle.mass;
                         circle.speed.y -= normalImpulse.y / circle.mass;
-                        forceMap[rectangle.id][circle.id].x = normalForce.x;
-                        forceMap[rectangle.id][circle.id].y = normalForce.y;
+                        forceMap[rectangle.id][circle.id].x = normalForce.x - frictionalForce.x;
+                        forceMap[rectangle.id][circle.id].y = normalForce.y - frictionalForce.y;
                     }
                     if (circle.type == "Player") {
                         if (circle.speed.y >= 0) {
@@ -431,16 +452,34 @@
 
                     let normal = normalize(mtv);
                     let dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
-
+                    let tangent = normalize(getTangent(normal));
                     let netForce = {
                         x: forceMap[r1.id][r1.id].x - forceMap[r2.id][r2.id].x,
                         y: forceMap[r1.id][r1.id].y - forceMap[r2.id][r2.id].y
                     };
-                    let forceAlongNormal = dot([normal.x, normal.y], [netForce.x, netForce.y]);
-                    let normalForceMagnitude = forceAlongNormal < 0 ? -forceAlongNormal : 0;
-                    let normalForce = setVectorMagnitude(mtv, normalForceMagnitude);
-
                     let relativeSpeed = { x: r2.speed.x - r1.speed.x, y: r2.speed.y - r1.speed.y };
+
+                    let normalForceMagnitude = 0;
+                    if (normal.y < 0) {
+                        normalForceMagnitude = dot([normal.x, normal.y], [forceMap[r1.id][r1.id].x - forceMap[r2.id][r2.id].x, -forceMap[r1.id][r1.id].y]);
+                    }
+                    else {
+                        normalForceMagnitude = dot([normal.x, normal.y], [forceMap[r1.id][r1.id].x - forceMap[r2.id][r2.id].x, forceMap[r2.id][r2.id].y]);
+                    }
+                    let normalForce = setVectorMagnitude(mtv, -normalForceMagnitude);
+
+                    let tangentSpeed = dot([tangent.x, tangent.y], [relativeSpeed.x, relativeSpeed.y]);
+                    let tangentDirection = setVectorMagnitude(tangent, tangentSpeed);
+                    let frictionalForceMagnitude = r1.friction * r2.friction * normalForceMagnitude;
+                    let forceNeeded = tangentSpeed * r1.mass;
+                    let frictionalForce = 0;
+                    if (Math.abs(forceNeeded) < Math.abs(frictionalForceMagnitude)) {
+                        frictionalForce = { x: -relativeSpeed.x, y: -relativeSpeed.y };
+                    }
+                    else {
+                        frictionalForce = setVectorMagnitude(tangentDirection, -frictionalForceMagnitude);
+                    }
+
                     let relativeSpeedNormal = dot([normal.x, normal.y], [relativeSpeed.x, relativeSpeed.y]);
                     let normalImpulseMagnitude = -relativeSpeedNormal / (1 / r1.mass + 1 / r2.mass);
                     let normalImpulse = setVectorMagnitude(mtv, normalImpulseMagnitude);
@@ -448,14 +487,14 @@
                     if (r1.type != "Static") {
                         r1.speed.x -= normalImpulse.x / r1.mass;
                         r1.speed.y -= normalImpulse.y / r1.mass;
-                        forceMap[r2.id][r1.id].x = -normalForce.x;
-                        forceMap[r2.id][r1.id].y = -normalForce.y;
+                        forceMap[r2.id][r1.id].x = normalForce.x - frictionalForce.x;
+                        forceMap[r2.id][r1.id].y = normalForce.y - frictionalForce.y;
                     }
                     if (r2.type != "Static") {
                         r2.speed.x += normalImpulse.x / r2.mass;
                         r2.speed.y += normalImpulse.y / r2.mass;
-                        forceMap[r1.id][r2.id].x = normalForce.x;
-                        forceMap[r1.id][r2.id].y = normalForce.y;
+                        forceMap[r1.id][r2.id].x = -(normalForce.x - frictionalForce.x);
+                        forceMap[r1.id][r2.id].y = -(normalForce.y - frictionalForce.y);
                     }
                 }
                 else {
