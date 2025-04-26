@@ -1,4 +1,4 @@
-import { dotProduct } from "../utils/math.js";
+import { dotProduct, negateVector } from "../utils/math.js";
 
 export function resolveCollision(obj1, obj2, mtv) {
     const overlapMagnitude = Math.hypot(mtv.x, mtv.y);
@@ -26,7 +26,8 @@ export function resolveCollision(obj1, obj2, mtv) {
 
     // Impulse from collision
     const impulse = calculateImpulse(obj1, obj2, normal);
-    applyImpulse(obj1, obj2, impulse);
+    obj1.applyImpulse(negateVector(impulse));
+    obj2.applyImpulse(impulse);
 
     // Normal force
     // Friction force
@@ -37,13 +38,6 @@ function calculateImpulse(obj1, obj2, normal) {
     const relativeVelocity = relativeSpeed(obj1, obj2);
     const impulseMagnitude = -dotProduct(relativeVelocity, normal) / (1 / obj1.mass + 1 / obj2.mass);
     return { x: impulseMagnitude * normal.x, y: impulseMagnitude * normal.y };
-}
-
-function applyImpulse(obj1, obj2, impulse) {
-    obj1.speed.x -= impulse.x / obj1.mass;
-    obj1.speed.y -= impulse.y / obj1.mass;
-    obj2.speed.x += impulse.x / obj2.mass;
-    obj2.speed.y += impulse.y / obj2.mass;
 }
 
 function relativeSpeed(obj1, obj2) {

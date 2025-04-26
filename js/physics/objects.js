@@ -25,7 +25,7 @@ export class Object {
         if (this.isPlayer) {
             this.jump = true;
         }
-        
+
         this.force = { x: 0, y: 0 };
         this.acceleration = { x: 0, y: 0};
         this.speed = { x: 0, y: 0 };
@@ -35,6 +35,12 @@ export class Object {
         if (!this.isDynamic) return;
         this.force.x += force.x;
         this.force.y += force.y;
+    }
+
+    applyImpulse(impulse) {
+        if (!this.isDynamic) return;
+        this.speed.x += impulse.x / this.mass;
+        this.speed.y += impulse.y / this.mass;
     }
 
     update() {
@@ -49,7 +55,7 @@ export class Object {
             this.position.y += this.speed.y;
             
             this.force.x = 0;
-            this.force.y = 0.1 * this.mass; // Gravity
+            this.force.y = 0;
         }
     }
 

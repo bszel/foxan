@@ -34,8 +34,8 @@ class Foxan {
     }
 
     update() {
-        this.playerController.update();
         this.objects.forEach(obj => obj.update());
+        this.objects.forEach(obj => obj.applyForce({ x: 0, y: 0.1 * obj.mass}));
 
         for (let i = 0; i < this.objects.length; i++) {
             for (let j = i + 1; j < this.objects.length; j++) {
@@ -49,6 +49,7 @@ class Foxan {
             };
         };
         
+        this.playerController.update();
         this.render();
     }
 
