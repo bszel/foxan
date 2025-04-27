@@ -2,7 +2,7 @@ import { Screen } from './core/screen.js';
 import { GameEngine } from './core/engine.js';
 import { Background } from './graphics/background.js'
 import { createCircle, createRectangle } from './physics/objects.js';
-import { checkCollision } from './physics/collision.js';
+import { getContact } from './physics/contact.js';
 import { resolveCollision } from './physics/resolve.js';
 import { PlayerController } from './physics/movement.js';
 import { debugText } from './graphics/debugtext.js';
@@ -44,10 +44,9 @@ class Foxan {
             for (let j = i + 1; j < this.objects.length; j++) {
                 const obj1 = this.objects[i];
                 const obj2 = this.objects[j];
-                const result = checkCollision(obj1, obj2, this.contacts);
-                
+                const result = getContact(obj1, obj2);
                 if (result) {
-                    resolveCollision(obj1, obj2, result);
+                    this.contacts.push(result);
                 };
             };
         };
