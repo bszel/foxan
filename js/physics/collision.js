@@ -43,7 +43,7 @@ export function collidesRC(rect, circle) {
         }
     }
 
-    const d = subtractVectors(circle.position, rect.position);
+    const d = subtractVectors(rect.position, circle.position);
     const dot = dotProduct(d, normal);
     normal = dot < 0 ? normal : negateVector(normal);
 

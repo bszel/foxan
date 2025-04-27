@@ -2,7 +2,22 @@ import { collidesRC, collidesRR } from './collision.js';
 import { subtractVectors, dotProduct, normalizeVector, negateVector, getTangentVector, getNormalVector } from '../utils/math.js';
 import { getCorners } from '../utils/geometry.js';
 
-export function getContact(obj1, obj2) {
+export function getContacts(objects) {
+    let contacts = [];
+    for (let i = 0; i < objects.length; i++) {
+        for (let j = i + 1; j < objects.length; j++) {
+            const obj1 = objects[i];
+            const obj2 = objects[j];
+            const result = getContact(obj1, obj2);
+            if (result) {
+                contacts.push(result);
+            };
+        };
+    };
+    return contacts;
+}
+
+function getContact(obj1, obj2) {
     if (!obj1.isDynamic && !obj2.isDynamic) return false;
     if (obj1.shape == 'rect' && obj2.shape == 'rect') {
         return getContactRR(obj1, obj2);
@@ -19,20 +34,20 @@ function getContactRC(rect, circle) {
     const result = collidesRC(rect, circle);
     if (!result) return null;
     let normal = result.normal;
-    const smallestOverlap = result.smallestOverlap;
+    const overlap = result.smallestOverlap;
     const point = {
-        x: circle.position.x + normal.x * (circle.radius - smallestOverlap),
-        y: circle.position.y + normal.y * (circle.radius - smallestOverlap)
+        x: circle.position.x - normal.x * (circle.radius - overlap),
+        y: circle.position.y - normal.y * (circle.radius - overlap)
     }
     const tangent = getTangentVector(normal);
-    return { rect, circle, normal, tangent, smallestOverlap, points: [point] };
+    return { obj1: rect, obj2: circle, normal, tangent, overlap, points: [point] };
 }
 
 function getContactRR(rect1, rect2) {
     const result = collidesRR(rect1, rect2);
     if (!result) return null;
     let normal = result.normal;
-    const smallestOverlap = result.smallestOverlap;
+    const overlap = result.smallestOverlap;
 
     const referenceRect = result.referenceRect;
     const referenceFace = findFaceAlongNormal(referenceRect, normal);
@@ -55,12 +70,12 @@ function getContactRR(rect1, rect2) {
     
     const points = clipLeft.filter(point => pointBelowReferenceFace(point, referenceFace));
 
-    if (dotProduct(subtractVectors(rect1.position, rect2.position), normal) < 0) {
+    if (dotProduct(subtractVectors(rect1.position, rect2.position), normal) > 0) {
         normal = negateVector(normal);
     }
     const tangent = getTangentVector(normal);
 
-    return { rect1, rect2, normal, tangent, smallestOverlap, points };
+    return { obj1: rect1, obj2: rect2, normal, tangent, overlap, points };
 }
 
 function pointBelowReferenceFace(point, referenceFace) {

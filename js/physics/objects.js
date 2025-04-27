@@ -1,4 +1,5 @@
 import { drawCircle, drawRect } from "../graphics/draw.js";
+import { subtractVectors } from "../utils/math.js";
 
 export class Object {
     constructor(id, shape, x, y, options) {
@@ -9,8 +10,10 @@ export class Object {
         this.isPlayer = options.isPlayer || false;
         this.isDynamic = options.isDynamic || this.isPlayer;
         this.rotation = options.rotation * Math.PI / 180 || 0;
-        this.mass = options.mass || 1;
-        this.friction = options.friction || 0.3;
+        this.mass = options.mass || 10;
+        this.friction = options.friction ?? 0.3;
+        this.restitution = options.restitution ?? 0.3;
+        this.rotatable = options.rotatable ?? true;
 
         if (!this.isDynamic) {
             this.mass = Infinity;
@@ -18,44 +21,39 @@ export class Object {
         if (this.shape === 'rect') {
             this.width = options.width;
             this.height = options.height;
+            this.inertia = this.mass * (this.width * this.width + this.height * this.height) / 12;
         }
         else if (this.shape === 'circle') {
             this.radius = options.radius;
+            this.inertia = this.mass * this.radius * this.radius / 2;
         }
         if (this.isPlayer) {
             this.jump = true;
         }
 
-        this.force = { x: 0, y: 0 };
         this.acceleration = { x: 0, y: 0};
         this.speed = { x: 0, y: 0 };
+        this.angularVelocity = 0;
+        this.inverseMass = 1 / this.mass;
+        this.inverseInertia = 1 / this.inertia || 0;
     }
 
-    applyForce(force) {
-        if (!this.isDynamic) return;
-        this.force.x += force.x;
-        this.force.y += force.y;
-    }
-
-    applyImpulse(impulse) {
+    applyImpulse(impulse, point) {
         if (!this.isDynamic) return;
         this.speed.x += impulse.x / this.mass;
         this.speed.y += impulse.y / this.mass;
+
+        if (!this.rotatable) return;
+        const r = subtractVectors(point, this.position);
+        this.angularVelocity -= (impulse.x * r.y - impulse.y * r.x) / this.inertia;
     }
 
     update() {
         if (this.isDynamic) {
-            this.acceleration.x = this.force.x / this.mass;
-            this.acceleration.y = this.force.y / this.mass;
-
-            this.speed.x += this.acceleration.x;
-            this.speed.y += this.acceleration.y;
-
             this.position.x += this.speed.x;
             this.position.y += this.speed.y;
-            
-            this.force.x = 0;
-            this.force.y = 0;
+
+            this.rotation += this.angularVelocity;
         }
     }
 
