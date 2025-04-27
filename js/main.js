@@ -16,7 +16,7 @@ class Foxan {
         this.background = new Background('./resources/images/background.png');
         this.playerSprite = new Sprite(138, 72, './resources/sprites/foxsprite.png');
         
-        this.player = createCircle(0, 500, 300, 30, { color: '#ff0000', isPlayer: true, mass: 10 });
+        this.player = createCircle(0, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10 });
         this.ground = createRectangle(1, 800, 700, 1600, 50, { color: '#000000', rotation: 45 });
         this.rect1 = createRectangle(2, 800, 600, 50, 50, { color: '#00ff00', isDynamic: true, rotation: -0 });
         this.rect2 = createRectangle(3, 800, 300, 50, 50, { color: '#0000ff', isDynamic: true, rotation: 45 });
