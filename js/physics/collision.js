@@ -1,8 +1,12 @@
-import { subtractVectors, dotProduct, negateVector } from "../utils/math.js";
+import { subtractVectors, dotProduct, negateVector, normalizeVector, getTangentVector, getNormalVector } from "../utils/math.js";
 
-export function checkCollision(obj1, obj2) {
+export function checkCollision(obj1, obj2, contacts) {
     if (!obj1.isDynamic && !obj2.isDynamic) return false;
     if (obj1.shape == 'rect' && obj2.shape == 'rect') {
+        const result = getContactsRR(obj1, obj2);
+        if (result) {
+            contacts.push(result);
+        }
         return collidesRR(obj1, obj2);
     }
     else if (obj1.shape == 'rect' && obj2.shape == 'circle') {
@@ -12,6 +16,92 @@ export function checkCollision(obj1, obj2) {
         return collidesRC(obj2, obj1);
     }
     else return false;
+}
+
+function getContactsRR(rect1, rect2) {
+    const result = collidesRR(rect1, rect2);
+    if (!result) return null;
+    let normal = result.normal;
+    const smallestOverlap = result.smallestOverlap;
+
+    const referenceRect = result.referenceRect;
+    const referenceFace = findFaceAlongNormal(referenceRect, normal);
+
+    const incidentRect = referenceRect === rect1 ? rect2 : rect1;
+    const incidentFace = findFaceAlongNormal(incidentRect, negateVector(normal));
+
+    const referenceDirection = normalizeVector(subtractVectors(referenceFace.corner2, referenceFace.corner1));
+    const referenceOffsetRight = -dotProduct(referenceFace.corner1, referenceDirection);
+    const clipRight = clipIncidentFace(incidentFace.corner1, incidentFace.corner2,
+        negateVector(referenceDirection), referenceOffsetRight);
+
+    if (!clipRight) return null;
+
+    const referenceOffsetLeft = dotProduct(referenceFace.corner2, referenceDirection);
+    const clipLeft = clipIncidentFace(clipRight[0], clipRight[1],
+        referenceDirection, referenceOffsetLeft);
+
+    if (!clipLeft) return null;
+    
+    const points = clipLeft.filter(point => pointBelowReferenceFace(point, referenceFace));
+
+    if (dotProduct(subtractVectors(rect1.position, rect2.position), normal) < 0) {
+        normal = negateVector(normal);
+    }
+    const tangent = getTangentVector(normal);
+
+    return { rect1, rect2, normal, tangent, smallestOverlap, points };
+}
+
+function pointBelowReferenceFace(point, referenceFace) {
+    const begin = referenceFace.corner1;
+    const end = referenceFace.corner2;
+    
+    // Calculate the cross product to determine which side of the line the point is on
+    const crossProduct = (end.x - begin.x) * (point.y - begin.y) - (end.y - begin.y) * (point.x - begin.x);
+    return crossProduct >= 0; // Returns true if the point is "below" the reference face
+}
+
+function clipIncidentFace(start, end, clipDirection, clipOffset) {
+    const direction = normalizeVector(clipDirection);
+
+    const startDot = dotProduct(start, direction) - clipOffset;
+    const endDot = dotProduct(end, direction) - clipOffset;
+
+    const points = [];
+
+    if (startDot <= 0) points.push(start);
+    if (endDot <= 0) points.push(end);
+    if (startDot * endDot < 0) {
+        const t = startDot / (startDot - endDot);
+        const intersection = {
+            x: start.x + t * (end.x - start.x),
+            y: start.y + t * (end.y - start.y)
+        };
+        points.push(intersection);
+    }
+    if (points.length < 2) {
+        return null;
+    }
+
+    return points;
+}
+
+function findFaceAlongNormal(rect, normal) {
+    const corners = getCorners(rect);
+    let maxDot = -Infinity;
+    let bestFace = null;
+    for (let i = 0; i < corners.length; i++) {
+        const nextIndex = (i + 1) % corners.length;
+        const edge = subtractVectors(corners[nextIndex], corners[i]);
+        const edgeNormal = getNormalVector(edge);
+        const dot = dotProduct(edgeNormal, normal);
+        if (dot > maxDot) {
+            maxDot = dot;
+            bestFace = { corner1: corners[i], corner2: corners[nextIndex] };
+        }
+    }
+    return bestFace;
 }
 
 function collidesRC(rect, circle) {
@@ -29,7 +119,7 @@ function collidesRC(rect, circle) {
     }
 
     let smallestOverlap = Infinity;
-    let mtvAxis = null;
+    let normal = null;
 
     // Find closest point on rectangle to circle
     const closestPoint = getClosestPointOnRect(rect, circle.position);
@@ -47,24 +137,19 @@ function collidesRC(rect, circle) {
         const projCircle = projectCircle(axis, circle);
 
         if (!isOverlapping(projRect, projCircle)) {
-            return { colliding: false, mtv: null };
+            return null;
         }
 
         const overlap = Math.min(projRect.max, projCircle.max) - Math.max(projRect.min, projCircle.min);
         if (overlap < smallestOverlap) {
             smallestOverlap = overlap;
-            // MTV direction should point from rect to circle
             const d = subtractVectors(circle.position, rect.position);
             const dot = dotProduct(d, axis);
-            mtvAxis = dot < 0 ? axis : negateVector(axis);
+            normal = dot < 0 ? axis : negateVector(axis);
         }
     }
 
-    const mtv = {
-        x: mtvAxis.x * smallestOverlap,
-        y: mtvAxis.y * smallestOverlap
-    };
-    return { colliding: true, mtv };
+    return { normal, smallestOverlap };
 }
 
 function getClosestPointOnRect(rect, point) {
@@ -99,32 +184,43 @@ function projectCircle(axis, circle) {
 function collidesRR(rect1, rect2) {
     const corners1 = getCorners(rect1);
     const corners2 = getCorners(rect2);
-    const axes = getAxes(corners1).concat(getAxes(corners2));
     let smallestOverlap = Infinity;
-    let mtvAxis = null;
+    let normal = null;
+    let referenceRect = null;
 
-    for (const axis of axes) {
-        const proj1 = projectPolygon(axis, corners1);
-        const proj2 = projectPolygon(axis, corners2);
+    function testAxes(corners, rect) {
+        for (let i = 0; i < corners.length; i++) {
+            const p1 = corners[i];
+            const p2 = corners[(i + 1) % corners.length];
+            const edge = subtractVectors(p2, p1);
+            const axis = getNormalVector(edge);
+            
+            const proj1 = projectPolygon(axis, corners1);
+            const proj2 = projectPolygon(axis, corners2);
 
-        if (!isOverlapping(proj1, proj2)) {
-            return { colliding: false, mtv: null };
+            if (!isOverlapping(proj1, proj2)) {
+                return null;
+            }
+
+            const overlap = Math.min(proj1.max, proj2.max) - Math.max(proj1.min, proj2.min);
+            if (overlap < smallestOverlap) {
+                smallestOverlap = overlap;
+                normal = axis;
+                referenceRect = rect;
+            }
         }
-
-        const overlap = Math.min(proj1.max, proj2.max) - Math.max(proj1.min, proj2.min);
-        if (overlap < smallestOverlap) {
-            smallestOverlap = overlap;
-            const d = subtractVectors(rect2.position, rect1.position);
-            const dot = dotProduct(d, axis);
-            mtvAxis = dot < 0 ? negateVector(axis) : axis;
-        }
+        return true;
     }
 
-    const mtv = {
-        x: mtvAxis.x * smallestOverlap,
-        y: mtvAxis.y * smallestOverlap
-    };
-    return { colliding: true, mtv };
+    if (!testAxes(corners1, rect1)) return null;
+    if (!testAxes(corners2, rect2)) return null;
+
+    const incidentRect = referenceRect === rect1 ? rect2 : rect1;
+    const d = subtractVectors(referenceRect.position, incidentRect.position);
+    const dot = dotProduct(d, normal);
+    normal = dot < 0 ? normal : negateVector(normal);
+
+    return { referenceRect, normal, smallestOverlap };
 }
 
 function getCorners(rect) {
@@ -134,8 +230,8 @@ function getCorners(rect) {
     const corners = [
         { x: -halfWidth, y: -halfHeight },
         { x: halfWidth, y: -halfHeight },
-        { x: -halfWidth, y: halfHeight },
-        { x: halfWidth, y: halfHeight }
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight }
     ];
 
     const cos = Math.cos(rect.rotation);

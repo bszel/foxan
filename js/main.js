@@ -7,6 +7,7 @@ import { resolveCollision } from './physics/resolve.js';
 import { PlayerController } from './physics/movement.js';
 import { debugText } from './graphics/debugtext.js';
 import { Sprite } from './graphics/sprites.js';
+import { drawContactPoints } from './graphics/debug.js';
 
 class Foxan {
     constructor() {
@@ -17,7 +18,7 @@ class Foxan {
         
         this.player = createCircle(0, 500, 300, 30, { color: '#ff0000', isPlayer: true, mass: 10 });
         this.ground = createRectangle(1, 800, 700, 1600, 50, { color: '#000000', rotation: 45 });
-        this.rect1 = createRectangle(2, 800, 600, 50, 50, { color: '#00ff00', isDynamic: true });
+        this.rect1 = createRectangle(2, 800, 600, 50, 50, { color: '#00ff00', isDynamic: true, rotation: -0 });
         this.rect2 = createRectangle(3, 800, 300, 50, 50, { color: '#0000ff', isDynamic: true, rotation: 45 });
         this.ground2 = createRectangle(4, 1200, 400, 50, 500, { color: '#000000', friction: 1 });
         this.ground3 = createRectangle(5, 800, 700, 1600, 50, { color: '#000000' });
@@ -31,9 +32,11 @@ class Foxan {
         this.objects.push(this.ground3);
 
         this.playerController = new PlayerController(this.player, this.playerSprite);
+        this.contacts = [];
     }
 
     update() {
+        this.contacts = [];
         this.objects.forEach(obj => obj.update());
         this.objects.forEach(obj => obj.applyForce({ x: 0, y: 0.1 * obj.mass}));
 
@@ -41,10 +44,10 @@ class Foxan {
             for (let j = i + 1; j < this.objects.length; j++) {
                 const obj1 = this.objects[i];
                 const obj2 = this.objects[j];
-                const result = checkCollision(obj1, obj2);
+                const result = checkCollision(obj1, obj2, this.contacts);
                 
-                if (result.colliding) {
-                    resolveCollision(obj1, obj2, result.mtv);
+                if (result) {
+                    resolveCollision(obj1, obj2, result);
                 };
             };
         };
@@ -60,6 +63,7 @@ class Foxan {
 
         this.objects.forEach(obj => obj.draw(this.screen.ctx));
         this.playerSprite.draw(this.screen.ctx, this.player);
+        drawContactPoints(this.screen.ctx, this.contacts);
     }
 
     start() {
