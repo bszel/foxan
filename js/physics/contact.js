@@ -1,4 +1,4 @@
-import { collidesRC, collidesRR } from './collision.js';
+import { collidesRC, collidesRR, collidesCC } from './collision.js';
 import { subtractVectors, dotProduct, normalizeVector, negateVector, getTangentVector, getNormalVector } from '../utils/math.js';
 import { getCorners } from '../utils/geometry.js';
 
@@ -28,6 +28,22 @@ function getContact(obj1, obj2) {
     else if (obj1.shape == 'circle' && obj2.shape == 'rect') {
         return getContactRC(obj2, obj1);
     }
+    else if (obj1.shape == 'circle' && obj2.shape == 'circle') {
+        return getContactCC(obj1, obj2);
+    }
+}
+
+function getContactCC(circle1, circle2) {
+    const result = collidesCC(circle1, circle2);
+    if (!result) return null;
+    let normal = result.normal;
+    const overlap = result.smallestOverlap;
+    const point = {
+        x: circle1.position.x + normal.x * (circle1.radius - overlap),
+        y: circle1.position.y + normal.y * (circle1.radius - overlap)
+    }
+    const tangent = getTangentVector(normal);
+    return { obj1: circle1, obj2: circle2, normal, tangent, overlap, points: [point] };
 }
 
 function getContactRC(rect, circle) {

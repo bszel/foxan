@@ -24,6 +24,8 @@ class Foxan {
         this.ground2 = createRectangle(4, 1200, 400, 50, 600, { color: '#000000', rotation: 20 });
         this.ground3 = createRectangle(5, 800, 700, 1600, 50, { color: '#000000', friction: 0 });
         this.ground4 = createRectangle(6, 150, 620, 10, 10, { color: '#000000' });
+        this.circle = createCircle(8, 900, 450, 100, { color: '#000000' });
+        this.circle2 = createCircle(9, 500, 400, 30, { color: '#ffff00', isDynamic: true, mass: 5 });
         
         this.objects = [];
         this.objects.push(this.player);
@@ -33,6 +35,8 @@ class Foxan {
         this.objects.push(this.ground);
         this.objects.push(this.ground2);
         this.objects.push(this.ground3);
+        this.objects.push(this.circle);
+        this.objects.push(this.circle2);
         // this.objects.push(this.ground4);
         // for (let i = 0; i < 100; i++) {
         //     this.objects.push(createRectangle(7 + i, 1400 * Math.random(), 600 * Math.random(), 20, 20, { color: '#000000', rotation: 0, isDynamic: true, mass: 5 }));

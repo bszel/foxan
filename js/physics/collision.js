@@ -1,6 +1,18 @@
 import { subtractVectors, dotProduct, negateVector } from "../utils/math.js";
 import { getCorners, getAxes, getClosestPointOnRect } from "../utils/geometry.js";
 
+export function collidesCC(circle1, circle2) {
+    const d = subtractVectors(circle2.position, circle1.position);
+    const distance = Math.hypot(d.x, d.y);
+    const radiusSum = circle1.radius + circle2.radius;
+
+    if (distance < radiusSum) {
+        const normal = distance > 0 ? { x: d.x / distance, y: d.y / distance } : { x: 0, y: 0 };
+        return { normal, smallestOverlap: radiusSum - distance };
+    }
+    return null;
+}
+
 export function collidesRC(rect, circle) {
     const corners = getCorners(rect);
     const axes = getAxes(corners);
