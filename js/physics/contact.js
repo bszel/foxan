@@ -39,6 +39,7 @@ function getContactCC(circle1, circle2) {
     let normal = result.normal;
     const overlap = result.smallestOverlap;
     const point = {
+        id: 0,
         x: circle1.position.x + normal.x * (circle1.radius - overlap),
         y: circle1.position.y + normal.y * (circle1.radius - overlap)
     }
@@ -52,6 +53,7 @@ function getContactRC(rect, circle) {
     let normal = result.normal;
     const overlap = result.smallestOverlap;
     const point = {
+        id: 0,
         x: circle.position.x - normal.x * (circle.radius - overlap),
         y: circle.position.y - normal.y * (circle.radius - overlap)
     }
@@ -90,6 +92,11 @@ function getContactRR(rect1, rect2) {
         normal = negateVector(normal);
     }
     const tangent = getTangentVector(normal);
+
+    // Give points unique IDs
+    for (let i = 0; i < points.length; i++) {
+        points[i].id = i;
+    }
 
     return { obj1: rect1, obj2: rect2, normal, tangent, overlap, points };
 }

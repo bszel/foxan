@@ -1,12 +1,32 @@
 import { dotProduct, negateVector, subtractVectors, scaleVector, crossNumberVector, crossVectorVector, addVectors, clamp, getTangentVector } from "../utils/math.js";
 
-export function solveConstraints(contacts) {
+export function solveConstraints(contacts, oldContacts) {
+    update(contacts, oldContacts);
     preStep(contacts);
-    // for (let i = 0; i < 3; i++) {
+    // for (let i = 0; i < 10; i++) {
     //     solvePosition(contacts);
     // }
     for (let i = 0; i < 20; i++) {
         solveVelocity(contacts);
+    }
+}
+
+function update(contacts, oldContacts) {
+    for (const contact of contacts) {
+        for (const point of contact.points) {
+            point.normalImpulse = 0;
+            point.tangentImpulse = 0;
+            for (const oldContact of oldContacts) {
+                if (oldContact.obj1.id === contact.obj1.id && oldContact.obj2.id === contact.obj2.id) {
+                    for (const oldPoint of oldContact.points) {
+                        if (point.id === oldPoint.id) {
+                            point.normalImpulse = oldPoint.normalImpulse;
+                            point.tangentImpulse = oldPoint.tangentImpulse;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -35,15 +55,22 @@ function preStep(contacts) {
                 + obj1.inverseInertia * rt1 * rt1
                 + obj2.inverseInertia * rt2 * rt2
             );
-            point.normalMass = 1 / normalMass;
-            point.tangentMass = 1 / tangentMass;
+            point.normalMass = normalMass;
+            point.tangentMass = tangentMass;
 
             point.bias = -biasFactor * Math.min(0, -overlap + slop);
-            point.normalImpulse = 0;
-            point.tangentImpulse = 0;
             point.r1 = r1;
             point.r2 = r2;
             point.friction = Math.sqrt(obj1.friction * obj2.friction);
+
+            // Apply normal + friction impulse
+            const impulse = addVectors(
+                scaleVector(normal, point.normalImpulse),
+                scaleVector(tangent, point.tangentImpulse)
+            );
+            obj1.applyImpulse(negateVector(impulse), point);
+            obj2.applyImpulse(impulse, point);
+
         }
         if (obj1.isPlayer && obj1.speed.y > 0) obj1.jump = true;
         if (obj2.isPlayer && obj2.speed.y > 0) obj2.jump = true;
@@ -52,20 +79,22 @@ function preStep(contacts) {
 
 function solvePosition(contacts) {
     for (const contact of contacts) {
-        const { obj1, obj2, normal, tangent, overlap } = contact;
+        const { obj1, obj2, normal, overlap } = contact;
         for (const point of contact.points) {
             const steeringFoce = clamp(0.2 * (-overlap + 0.5), -5, 0);
-            const impulse = scaleVector(normal, -steeringFoce / point.normalMass);
-
-            console.log("Impulse:", impulse);
+            const impulse = scaleVector(normal, -steeringFoce * point.normalMass);
 
             if (obj1.isDynamic) {
-                obj1.position = addVectors(obj1.position, scaleVector(impulse, obj1.inverseMass));
-                obj1.rotation -= crossVectorVector(impulse, point.r1) * obj1.inverseInertia;
+                obj1.position = addVectors(obj1.position, scaleVector(impulse, -obj1.inverseMass));
+                if (obj1.rotatable) {
+                    obj1.rotation -= crossVectorVector(impulse, point.r1) * obj1.inverseInertia;
+                }
             }
             if (obj2.isDynamic) {
                 obj2.position = addVectors(obj2.position, scaleVector(impulse, obj2.inverseMass));
-                obj2.rotation += crossVectorVector(impulse, point.r2) * obj2.inverseInertia;
+                if (obj2.rotatable) {
+                    obj2.rotation += crossVectorVector(impulse, point.r2) * obj2.inverseInertia;
+                }
             }
         }
     }
@@ -88,7 +117,7 @@ function solveVelocity(contacts) {
             const normalVelocity = dotProduct(relativeVelocity, normal);
             let deltaImpulse = point.normalMass * (-normalVelocity + point.bias);
 
-            // Clamp impulse (no negative)
+            // Clamp normal impulse
             const oldImpulse = point.normalImpulse;
             point.normalImpulse = Math.max(point.normalImpulse + deltaImpulse, 0);
             deltaImpulse = point.normalImpulse - oldImpulse;
@@ -107,7 +136,7 @@ function solveVelocity(contacts) {
             const tangentVelocity = -dotProduct(relativeVelocity, tangent);
             deltaImpulse = point.tangentMass * (tangentVelocity);
 
-            // Clamp impulse
+            // Clamp tangent impulse
             const maxTangentImpulse = point.friction * point.normalImpulse;
             const oldTangentImpulse = point.tangentImpulse;
             point.tangentImpulse = clamp(point.tangentImpulse + deltaImpulse, -maxTangentImpulse, maxTangentImpulse);

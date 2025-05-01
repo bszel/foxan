@@ -16,8 +16,8 @@ export class PlayerController {
 
     handleLeft() {
         if (keyboard.a()) {
-            const force = this.player.speed.x > -4 ? -2.5 : 0;
-            this.player.applyImpulse({ x: force, y: 0 }, this.player.position);
+            const force = this.player.speed.x > -4 ? -0.25 : 0;
+            this.player.applyImpulse({ x: force * this.player.mass, y: 0 }, this.player.position);
             this.playerSprite.side = 0;
             if (this.player.jump) {
                 this.playerSprite.playAnimation = true;
@@ -27,8 +27,8 @@ export class PlayerController {
 
     handleRight() {
         if (keyboard.d()) {
-            const force = this.player.speed.x < 4 ? 2.5 : 0;
-            this.player.applyImpulse({ x: force, y: 0 }, this.player.position);
+            const force = this.player.speed.x < 4 ? 0.25 : 0;
+            this.player.applyImpulse({ x: force * this.player.mass, y: 0 }, this.player.position);
             this.playerSprite.side = 1;
             if (this.player.jump) {
                 this.playerSprite.playAnimation = true;
