@@ -3,6 +3,7 @@ export class GameEngine {
         this.timestep = 1000 / 60; // 60 FPS
         this.lastFrameTime = 0;
         this.accumulatedTime = 0;
+        this.frame = null;
     }
 
     start(update) {
@@ -18,9 +19,13 @@ export class GameEngine {
                 this.accumulatedTime -= this.timestep;
             }
 
-            requestAnimationFrame(gameLoop);
+            this.frame = requestAnimationFrame(gameLoop);
         };
 
-        requestAnimationFrame(gameLoop);
+        this.frame = requestAnimationFrame(gameLoop);
+    }
+
+    stop() {
+        cancelAnimationFrame(this.frame);
     }
 }

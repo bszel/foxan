@@ -42,9 +42,25 @@ class Foxan {
     start() {
         this.engine.start(() => this.update());
     }
+
+    exit() {
+        this.engine.stop();
+        document.getElementById('game-canvas').remove();
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const foxan = new Foxan();
+let foxan = null;
+const startButton = document.getElementById('start-button');
+const exitButton = document.getElementById('exit-button');
+startButton.onclick = function () {
+    foxan = new Foxan();
     foxan.start();
-});
+    startButton.hidden = true;
+    exitButton.hidden = false;
+};
+exitButton.onclick = function() {
+    foxan.exit();
+    foxan = null;
+    startButton.hidden = false;
+    exitButton.hidden = true;
+};
