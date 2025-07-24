@@ -6,22 +6,19 @@ import { PlayerController } from './physics/movement.js';
 import { debugText } from './graphics/debugtext.js';
 import { Sprite } from './graphics/sprites.js';
 import { drawContactPoints } from './graphics/debug.js';
-import { createObjects } from './data/data.js'
 import { PhysicsEngine } from './physics/pysicsengine.js';
+import { initializeButtons } from './buttons/buttons.js';
+import { MapEditor } from './mapeditor/mapeditor.js';
 
 class Foxan {
     constructor() {
         this.screen = new Screen(1600, 800);
         this.engine = new GameEngine();
         this.physics = new PhysicsEngine();
+        this.mapEditor = new MapEditor(this);
         this.background = new Background('./resources/images/background.png');
         this.playerSprite = new Sprite(138, 72, './resources/sprites/foxsprite.png');
-        
-        this.player = createCircle(0, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false });
-        this.objects = createObjects();
-        this.objects.push(this.player);
-
-        this.playerController = new PlayerController(this.player, this.playerSprite);
+        initializeButtons(this);
     }
 
     update() {
@@ -31,36 +28,32 @@ class Foxan {
     }
 
     render() {
-        this.screen.clear();
-        this.background.draw(this.screen.ctx, 0, 0);
-        debugText(this.screen.ctx, this.player);
-        this.objects.forEach(obj => obj.draw(this.screen.ctx));
+        this.renderObjects(this.objects);
         this.playerSprite.draw(this.screen.ctx, this.player);
         drawContactPoints(this.screen.ctx, this.physics.getContacts());
+        debugText(this.screen.ctx, this.player);
     }
 
-    start() {
+    renderObjects(objects) {
+        this.screen.clear();
+        this.background.draw(this.screen.ctx, 0, 0);
+        objects.forEach(obj => obj.draw(this.screen.ctx));
+    }
+
+    start(objects) {
+        this.player = createCircle(0, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false });
+        this.playerController = new PlayerController(this.player, this.playerSprite);
+        this.objects = objects;
+        this.objects.push(this.player);
         this.engine.start(() => this.update());
     }
 
     exit() {
         this.engine.stop();
-        document.getElementById('game-canvas').remove();
+        this.screen.clear();
     }
 }
 
-let foxan = null;
-const startButton = document.getElementById('start-button');
-const exitButton = document.getElementById('exit-button');
-startButton.onclick = function () {
-    foxan = new Foxan();
-    foxan.start();
-    startButton.hidden = true;
-    exitButton.hidden = false;
-};
-exitButton.onclick = function() {
-    foxan.exit();
-    foxan = null;
-    startButton.hidden = false;
-    exitButton.hidden = true;
-};
+document.addEventListener('DOMContentLoaded', () => {
+    const foxan = new Foxan();
+});

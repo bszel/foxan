@@ -27,5 +27,7 @@ export class GameEngine {
 
     stop() {
         cancelAnimationFrame(this.frame);
+        this.lastFrameTime = 0;
+        this.accumulatedTime = 0;
     }
 }
