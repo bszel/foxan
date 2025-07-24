@@ -7,7 +7,7 @@ import { debugText } from './graphics/debugtext.js';
 import { Sprite } from './graphics/sprites.js';
 import { drawContactPoints } from './graphics/debug.js';
 import { PhysicsEngine } from './physics/pysicsengine.js';
-import { initializeButtons } from './buttons/buttons.js';
+import { initializeButtons } from './gui/buttons.js';
 import { MapEditor } from './mapeditor/mapeditor.js';
 
 class Foxan {
@@ -19,12 +19,20 @@ class Foxan {
         this.background = new Background('./resources/images/background.png');
         this.playerSprite = new Sprite(138, 72, './resources/sprites/foxsprite.png');
         initializeButtons(this);
+        this.state = 'menu';
+        this.engine.start(() => this.update());
     }
 
     update() {
-        this.playerController.update();
-        this.physics.update(this.objects);
-        this.render();
+        if (this.state == 'menu') return;
+        else if (this.state == 'game') {
+            this.playerController.update();
+            this.physics.update(this.objects);
+            this.render();
+        }
+        else if (this.state == 'editor') {
+            this.mapEditor.update();
+        }
     }
 
     render() {
@@ -40,17 +48,24 @@ class Foxan {
         objects.forEach(obj => obj.draw(this.screen.ctx));
     }
 
-    start(objects) {
+    startGame(objects) {
+        this.mapEditor.exit();
         this.player = createCircle(0, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false });
         this.playerController = new PlayerController(this.player, this.playerSprite);
         this.objects = objects;
         this.objects.push(this.player);
-        this.engine.start(() => this.update());
+        this.state = 'game';
     }
 
     exit() {
-        this.engine.stop();
         this.screen.clear();
+        this.mapEditor.exit();
+        this.state = 'menu';
+    }
+
+    startEditor() {
+        this.mapEditor.start();
+        this.state = 'editor';
     }
 }
 

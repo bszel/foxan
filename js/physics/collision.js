@@ -113,3 +113,41 @@ function projectCircle(axis, circle) {
     const centerProjection = dotProduct(circle.position, axis);
     return { min: centerProjection - circle.radius, max: centerProjection + circle.radius };
 }
+
+function collidesRP(rect, point) {
+    const cos = Math.cos(-rect.rotation);
+    const sin = Math.sin(-rect.rotation);
+    
+    const translatedX = point.x - rect.position.x;
+    const translatedY = point.y - rect.position.y;
+    
+    const localX = translatedX * cos - translatedY * sin;
+    const localY = translatedX * sin + translatedY * cos;
+    
+    const halfWidth = rect.width / 2;
+    const halfHeight = rect.height / 2;
+    return (
+        localX >= -halfWidth &&
+        localX <= halfWidth &&
+        localY >= -halfHeight &&
+        localY <= halfHeight
+    );
+}
+
+function collidesCP(circle, point) {
+    const distance = Math.hypot(
+        point.x - circle.position.x,
+        point.y - circle.position.y
+    );
+    return distance <= circle.radius;
+}
+
+export function collidesObjectPoint(object, point) {
+    if (object.shape == 'rect') {
+        return collidesRP(object, point);
+    }
+    else if (object.shape == 'circle') {
+        return collidesCP(object, point);
+    }
+    return false;
+}

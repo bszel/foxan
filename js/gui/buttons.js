@@ -12,7 +12,7 @@ export function initializeButtons(foxan) {
         if (objects.length == 0) {
             objects = createObjects();
         }
-        foxan.start(objects);
+        foxan.startGame(objects);
         startButton.hidden = true;
         exitButton.hidden = false;
         mapEditorSection.hidden = true;
@@ -20,7 +20,6 @@ export function initializeButtons(foxan) {
     };
     exitButton.onclick = function () {
         foxan.exit();
-        foxan.mapEditor.objects = [];
         startButton.hidden = false;
         exitButton.hidden = true;
         mapEditorButton.hidden = false;
@@ -28,12 +27,14 @@ export function initializeButtons(foxan) {
     mapEditorButton.onclick = function () {
         mapEditorSection.hidden = false;
         mapEditorButton.hidden = true;
-        foxan.renderObjects([]);
+        foxan.startEditor();
     };
     addRectangleButton.onclick = function () {
-        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeRectangle);
+        foxan.mapEditor.addRectangle();
+        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeObject);
     };
     addCircleButton.onclick = function () {
-        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeCircle);
+        foxan.mapEditor.addCircle();
+        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeObject);
     };
 }
