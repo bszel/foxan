@@ -41,10 +41,8 @@ export function initializeButtons(foxan) {
     }
     addRectangleButton.onclick = function () {
         foxan.mapEditor.addRectangle();
-        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeObject);
     };
     addCircleButton.onclick = function () {
         foxan.mapEditor.addCircle();
-        foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeObject);
     };
 }
