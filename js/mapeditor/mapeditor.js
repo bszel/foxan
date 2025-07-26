@@ -1,6 +1,8 @@
 import { createCircle, createRectangle } from '../physics/objects.js';
 import { mouse } from '../core/mouse.js';
 import { collidesObjectPoint } from '../physics/collision.js';
+import { loadAttributes, removeAttributes, updateAttributes } from '../gui/mapeditor.js';
+import { toRadians } from "../utils/math.js";
 
 export class MapEditor {
     constructor(foxan) {
@@ -8,30 +10,44 @@ export class MapEditor {
         this.canvas = foxan.screen.canvas;
         this.objects = [];
 
-        this.placeObject = this.placeObject.bind(this);
         this.cursorCollides = this.cursorCollides.bind(this);
         this.selectObject = this.selectObject.bind(this);
+        this.rotateObject = this.rotateObject.bind(this);
+        this.dragObject = this.dragObject.bind(this);
+        this.undragObject = this.undragObject.bind(this);
 
         this.selectedObject = null;
+        this.draggedObject = null;
+        this.dragOffset = { x: 0, y: 0 };
     }
 
-    start() {
-        this.objects = [];
+    start(objects) {
+        this.objects = objects;
         this.selectedObject = null;
+        this.draggedObject = null;
         this.canvas.addEventListener('mousemove', this.cursorCollides);
-        this.canvas.addEventListener('click', this.selectObject);
+        this.canvas.addEventListener('mousedown', () => this.selectObject(null));
+        this.canvas.addEventListener('mousedown', this.dragObject);
     }
     
     exit() {
         this.objects = [];
         this.selectedObject = null;
+        this.draggedObject = null;
         this.canvas.removeEventListener('mousemove', this.cursorCollides);
-        this.canvas.removeEventListener('click', this.selectObject);
+        this.canvas.removeEventListener('mousedown', () => this.selectObject(null));
+        this.canvas.removeEventListener('mousedown', this.dragObject);
+        this.canvas.removeEventListener('wheel', this.rotateObject);
+        removeAttributes();
     }
 
     update() {
-        if (!this.selectedObject) return;
-        this.selectedObject.position = { x: mouse.x(), y: mouse.y() };
+        if (this.draggedObject) {
+            this.draggedObject.position = { x: mouse.x() - this.dragOffset.x, y: mouse.y() - this.dragOffset.y };
+            if (this.selectedObject) {
+                updateAttributes(this.selectedObject);
+            } 
+        }
         this.foxan.renderObjects(this.objects);
     }
 
@@ -42,6 +58,8 @@ export class MapEditor {
         let rectangle = createRectangle(id, x, y, 1600, 50, { color: '#000000' });
         this.objects.push(rectangle);
         this.selectedObject = rectangle;
+        this.draggedObject = rectangle;
+        this.selectObject(this.selectedObject);
     }
 
     addCircle() {
@@ -51,11 +69,13 @@ export class MapEditor {
         let circle = createCircle(id, x, y, 100, { color: '#000000' });
         this.objects.push(circle);
         this.selectedObject = circle;
+        this.draggedObject = circle;
+        this.selectObject(this.selectedObject);
     }
 
     getHoveredObject() {
         const point = { x: mouse.x(), y: mouse.y() };
-        for (const object of this.objects) {
+        for (const object of this.objects.toReversed()) {
             if (collidesObjectPoint(object, point)) {
                 return object;
             }
@@ -67,16 +87,50 @@ export class MapEditor {
         this.canvas.style.cursor = this.getHoveredObject() ? "pointer" : "default";
     }
 
-    selectObject() {
-        const hoveredObject = this.getHoveredObject();
-        if (!hoveredObject) return;
-        this.selectedObject = hoveredObject;
-        this.canvas.addEventListener('click', this.placeObject);
+    selectObject(object) {
+        if (!object) {
+            const hoveredObject = this.getHoveredObject();
+            if (!hoveredObject) {
+                this.unselectObject();
+                return;
+            }
+            this.selectedObject = hoveredObject;
+        }
+        else {
+            this.selectedObject = object;
+        }
+        this.canvas.addEventListener('wheel', this.rotateObject);
+        removeAttributes();
+        loadAttributes(this.selectedObject);
     }
 
-    placeObject() {
+    dragObject() {
+        const hoveredObject = this.getHoveredObject();
+        if (!hoveredObject) return;
+        this.draggedObject = hoveredObject;
+        this.dragOffset = { x: mouse.x() - this.draggedObject.position.x, y: mouse.y() - this.draggedObject.position.y };
+        this.canvas.addEventListener('mouseup', this.undragObject);
+    }
+
+    undragObject() {
+        this.draggedObject = null;
+        this.dragOffset = { x: 0, y: 0 };
+        this.canvas.removeEventListener('mouseup', this.undragObject);
+    }
+
+    unselectObject() {
         this.selectedObject = null;
-        this.canvas.removeEventListener('click', this.placeObject);
-        this.canvas.addEventListener('click', this.selectObject);
+        this.draggedObject = null;
+        this.canvas.removeEventListener('wheel', this.rotateObject);
+        removeAttributes();
+    }
+
+    rotateObject(event) {
+        if (event.deltaY < 0) {
+            this.selectedObject.rotation -= toRadians(10);
+        } else if (event.deltaY > 0) {
+            this.selectedObject.rotation += toRadians(10);
+        }
+        updateAttributes(this.selectedObject);
     }
 }

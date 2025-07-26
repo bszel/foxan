@@ -63,8 +63,14 @@ class Foxan {
         this.state = 'menu';
     }
 
-    startEditor() {
-        this.mapEditor.start();
+    startEditor(keepObjects) {
+        if (keepObjects) {
+            const objects = this.objects.filter(object => object.isPlayer === false);
+            this.mapEditor.start(objects);
+        }
+        else {
+            this.mapEditor.start([]);
+        }
         this.state = 'editor';
     }
 }

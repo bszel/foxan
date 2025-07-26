@@ -1,6 +1,9 @@
 export class Screen {
     constructor(width, height) {
         this.canvas = document.createElement('canvas');
+        this.canvas.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+        });
         this.ctx = this.canvas.getContext('2d');
         this.canvas.id = 'game-canvas';
         this.canvas.width = width;

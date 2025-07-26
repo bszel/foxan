@@ -15,17 +15,12 @@ export class Object {
         this.restitution = options.restitution ?? 0.3;
         this.rotatable = options.rotatable ?? true;
 
-        if (!this.isDynamic) {
-            this.mass = Infinity;
-        }
         if (this.shape === 'rect') {
             this.width = options.width;
             this.height = options.height;
-            this.inertia = this.mass * (this.width * this.width + this.height * this.height) / 12;
         }
         else if (this.shape === 'circle') {
             this.radius = options.radius;
-            this.inertia = this.mass * this.radius * this.radius / 2;
         }
         if (this.isPlayer) {
             this.jump = true;
@@ -34,6 +29,25 @@ export class Object {
         this.acceleration = { x: 0, y: 0};
         this.speed = { x: 0, y: 0 };
         this.angularVelocity = 0;
+        this.calculateAttributes();
+    }
+
+    // Calculates attributes dependent on other values. Use after changing size or mass
+    calculateAttributes() {
+        if (!this.isDynamic) {
+            this.mass = Infinity;
+        }
+        else if (this.mass == Infinity) {
+            this.mass = 10;
+        }
+
+        if (this.shape === 'rect') {
+            this.inertia = this.mass * (this.width * this.width + this.height * this.height) / 12;
+        }
+        else if (this.shape === 'circle') {
+            this.inertia = this.mass * this.radius * this.radius / 2;
+        }
+
         this.inverseMass = 1 / this.mass;
         this.inverseInertia = 1 / this.inertia || 0;
     }

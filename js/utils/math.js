@@ -46,3 +46,11 @@ export function addVectors(v1, v2) {
 export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
+
+export function toRadians(angle) {
+    return angle * (Math.PI / 180);
+}
+
+export function toDegrees(angle) {
+    return angle * (180 / Math.PI);
+}

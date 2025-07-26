@@ -5,6 +5,7 @@ export function initializeButtons(foxan) {
     const exitButton = document.getElementById('exit-button');
     const mapEditorSection = document.getElementById('map-editor-section');
     const mapEditorButton = document.getElementById('map-editor-button');
+    const backToMapEditorButton = document.getElementById('back-to-map-editor-button');
     const addRectangleButton = document.getElementById('add-rectangle-button');
     const addCircleButton = document.getElementById('add-circle-button');
     startButton.onclick = function () {
@@ -17,18 +18,27 @@ export function initializeButtons(foxan) {
         exitButton.hidden = false;
         mapEditorSection.hidden = true;
         mapEditorButton.hidden = true;
+        backToMapEditorButton.hidden = false;
     };
     exitButton.onclick = function () {
         foxan.exit();
         startButton.hidden = false;
         exitButton.hidden = true;
         mapEditorButton.hidden = false;
+        backToMapEditorButton.hidden = true;
     };
     mapEditorButton.onclick = function () {
         mapEditorSection.hidden = false;
         mapEditorButton.hidden = true;
-        foxan.startEditor();
+        foxan.startEditor(false);
     };
+    backToMapEditorButton.onclick = function () {
+        startButton.hidden = false;
+        exitButton.hidden = true;
+        mapEditorSection.hidden = false;
+        backToMapEditorButton.hidden = true;
+        foxan.startEditor(true);
+    }
     addRectangleButton.onclick = function () {
         foxan.mapEditor.addRectangle();
         foxan.screen.canvas.addEventListener('click', foxan.mapEditor.placeObject);
