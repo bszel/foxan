@@ -9,7 +9,10 @@ export class MultiplayerManager {
 
     start(ip) {
         this.ws = new WebSocket(`wss://${ip}`);
-        this.online = true;
+
+        this.ws.addEventListener('open', () => {
+            this.online = true;
+        });
 
         this.ws.addEventListener('message', (event) => {
             const objectsRaw = JSON.parse(event.data);
@@ -36,7 +39,9 @@ export class MultiplayerManager {
     }
 
     sendObject(object) {
-        this.ws.send(JSON.stringify(object));
+        if (this.online) {
+            this.ws.send(JSON.stringify(object));
+        }
     }
 
     close() {
