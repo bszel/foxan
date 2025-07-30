@@ -8,6 +8,9 @@ export function initializeButtons(foxan) {
     const backToMapEditorButton = document.getElementById('back-to-map-editor-button');
     const addRectangleButton = document.getElementById('add-rectangle-button');
     const addCircleButton = document.getElementById('add-circle-button');
+    const multiplayerButton = document.getElementById('multiplayer-button');
+    const multiplayerIPSection = document.getElementById('multiplayer-ip-section');
+    const multiplayerIPSubmit = document.getElementById('multiplayer-ip-submit');
     startButton.onclick = function () {
         let objects = foxan.mapEditor.objects;
         if (objects.length == 0) {
@@ -19,6 +22,7 @@ export function initializeButtons(foxan) {
         mapEditorSection.hidden = true;
         mapEditorButton.hidden = true;
         backToMapEditorButton.hidden = false;
+        multiplayerButton.hidden = true;
     };
     exitButton.onclick = function () {
         foxan.exit();
@@ -26,17 +30,21 @@ export function initializeButtons(foxan) {
         exitButton.hidden = true;
         mapEditorButton.hidden = false;
         backToMapEditorButton.hidden = true;
+        multiplayerButton.hidden = false;
+        multiplayerIPSection.hidden = true;
     };
     mapEditorButton.onclick = function () {
         mapEditorSection.hidden = false;
         mapEditorButton.hidden = true;
         foxan.startEditor(false);
+        multiplayerButton.hidden = true;
     };
     backToMapEditorButton.onclick = function () {
         startButton.hidden = false;
         exitButton.hidden = true;
         mapEditorSection.hidden = false;
         backToMapEditorButton.hidden = true;
+        multiplayerButton.hidden = true;
         foxan.startEditor(true);
     }
     addRectangleButton.onclick = function () {
@@ -45,4 +53,17 @@ export function initializeButtons(foxan) {
     addCircleButton.onclick = function () {
         foxan.mapEditor.addCircle();
     };
+    multiplayerButton.onclick = function () {
+        startButton.hidden = true;
+        multiplayerButton.hidden = true;
+        exitButton.hidden = false;
+        mapEditorSection.hidden = true;
+        mapEditorButton.hidden = true;
+        multiplayerIPSection.hidden = false;
+    }
+    multiplayerIPSubmit.onclick = function () {
+        const ip = document.getElementById('multiplayer-ip-text').value;
+        multiplayerIPSection.hidden = true;
+        foxan.connectOnline(ip);
+    }
 }

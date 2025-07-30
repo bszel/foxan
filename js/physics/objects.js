@@ -1,7 +1,8 @@
 import { drawCircle, drawRect } from "../graphics/draw.js";
+import { Sprite } from "../graphics/sprites.js";
 import { subtractVectors } from "../utils/math.js";
 
-export class Object {
+export class FoxanObject {
     constructor(id, shape, x, y, options) {
         this.id = id;
         this.shape = shape;
@@ -14,6 +15,7 @@ export class Object {
         this.friction = options.friction ?? 0.3;
         this.restitution = options.restitution ?? 0.3;
         this.rotatable = options.rotatable ?? true;
+        this.sprite = options.sprite ?? null;
 
         if (this.shape === 'rect') {
             this.width = options.width;
@@ -50,6 +52,21 @@ export class Object {
 
         this.inverseMass = 1 / this.mass;
         this.inverseInertia = 1 / this.inertia || 0;
+    }
+
+    setAttributes(attributes) {
+        for (const key in attributes) {
+            if (key == 'sprite' && attributes.isPlayer) {
+                if (!this.sprite) {
+                    this.sprite = new Sprite(138, 72, './resources/sprites/foxsprite.png');
+                }
+                this.sprite.position = attributes.sprite.position;
+                this.sprite.animCounter = attributes.sprite.animCounter;
+                this.sprite.side = attributes.sprite.side;
+                continue;
+            }
+            this[key] = attributes[key];
+        }
     }
 
     applyImpulse(impulse, point) {
@@ -99,9 +116,9 @@ export class Object {
 }
 
 export function createRectangle(id, x, y, width, height, options = {}) {
-    return new Object(id, 'rect', x, y, { ...options, width, height });
+    return new FoxanObject(id, 'rect', x, y, { ...options, width, height });
 }
 
 export function createCircle(id, x, y, radius, options = {}) {
-    return new Object(id, 'circle', x, y, { ...options, radius });
+    return new FoxanObject(id, 'circle', x, y, { ...options, radius });
 }
