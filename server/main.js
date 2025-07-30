@@ -1,15 +1,14 @@
 import { createRectangle } from '../js/physics/objects.js';
-import http from 'node:http';
+import https from 'node:https';
 import { WebSocketServer } from 'ws';
+import fs from 'fs';
 
-const hostname = '127.0.0.1';
-const port = 3000;
+const hostname = '0.0.0.0';
+const port = 443;
 
-const server = http.createServer((req, res) => {
-    console.log('http connection');
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hello, World!\n');
+const server = https.createServer({
+    key: fs.readFileSync('/etc/letsencrypt/live/63666666.xyz/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/63666666.xyz/fullchain.pem')
 });
 
 const wss = new WebSocketServer({ server });
@@ -42,5 +41,5 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
+    console.log(`Server running at https://${hostname}:${port}/`);
 });

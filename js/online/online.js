@@ -8,7 +8,7 @@ export class MultiplayerManager {
     }
 
     start(ip) {
-        this.ws = new WebSocket(`ws://${ip}:3000`);
+        this.ws = new WebSocket(`wss://${ip}`);
         this.online = true;
 
         this.ws.addEventListener('message', (event) => {
