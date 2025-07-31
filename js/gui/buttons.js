@@ -17,7 +17,7 @@ export function initializeButtons(foxan) {
         if (objects.length == 0) {
             objects = createObjects();
         }
-        foxan.startGame(objects, 0);
+        foxan.startGame(objects, 0, '');
         startButton.hidden = true;
         exitButton.hidden = false;
         mapEditorSection.hidden = true;
@@ -65,8 +65,9 @@ export function initializeButtons(foxan) {
     }
     multiplayerIPSubmit.onclick = function () {
         const ip = document.getElementById('multiplayer-ip-text').value;
+        const playerName = document.getElementById('multiplayer-name-text').value;
         multiplayerIPSection.hidden = true;
-        foxan.connectOnline(ip);
+        foxan.connectOnline(ip, playerName);
         chatSection.hidden = false;
     }
 }

@@ -7,7 +7,7 @@ export class ChatManager {
 
     sendMessage(player, text) {
         const message = {
-            playerName: player.id,
+            playerName: player.name,
             message: text
         };
         return message;

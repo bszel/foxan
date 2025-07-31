@@ -32,10 +32,10 @@ export class ServerManager {
         if (!session.player) {
             session.player = player;
             this.players.push(session.player);
-            console.log(`Player ${session.player.id} has joined`);
+            console.log(`Player ${session.player.name} (${session.player.id}) has joined`);
             const message = {
                 playerName: 'SERVER',
-                message: `Player ${session.player.id} has joined`
+                message: `Player ${session.player.name} (${session.player.id}) has joined`
             };
             this.handleChatMessage(message);
         }
@@ -47,12 +47,14 @@ export class ServerManager {
             players: this.players
         };
         ws.send(JSON.stringify(messagePlayers));
-        const messageText = {
-            type: 'chat-message',
-            messages: session.chatMessageQueue
-        };
-        session.chatMessageQueue = [];
-        ws.send(JSON.stringify(messageText));
+        if (session.chatMessageQueue.length > 0) {
+            const messageText = {
+                type: 'chat-message',
+                messages: session.chatMessageQueue
+            };
+            session.chatMessageQueue = [];
+            ws.send(JSON.stringify(messageText));
+        }
     }
 
     handleChatMessage(message) {
@@ -64,10 +66,10 @@ export class ServerManager {
     handleClose(session) {
         const index = this.players.indexOf(session.player);
         this.players.splice(index, 1);
-        console.log(`Player ${session.player.id} has disconnected`);
+        console.log(`Player ${session.player.name} (${session.player.id}) has disconnected`);
         const message = {
             playerName: 'SERVER',
-            message: `Player ${session.player.id} has disconnected`
+            message: `Player ${session.player.name} (${session.player.id}) has disconnected`
         };
         this.handleChatMessage(message);
     }

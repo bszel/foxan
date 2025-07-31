@@ -44,6 +44,7 @@ class Foxan {
         this.renderObjects(objects);
         this.renderSprites(objects);
         drawContactPoints(this.screen.ctx, this.physics.getContacts());
+        this.renderNames(this.players);
         debugText(this.screen.ctx, this.player);
     }
 
@@ -61,9 +62,14 @@ class Foxan {
         objects.forEach(obj => obj.draw(this.screen.ctx));
     }
 
-    startGame(objects, playerID) {
+    renderNames(objects) {
+        objects.forEach(obj => obj.drawName(this.screen.ctx));
+    }
+
+    startGame(objects, playerID, playerName) {
         this.mapEditor.exit();
-        this.player = createCircle(playerID, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false, sprite: this.playerSprite });
+        this.player = createCircle(playerID, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3,
+            rotatable: false, sprite: this.playerSprite, name: playerName });
         this.playerController = new PlayerController(this.player, this.playerSprite);
         this.objects = objects;
         this.players = [this.player];
@@ -87,8 +93,8 @@ class Foxan {
         this.state = 'editor';
     }
 
-    connectOnline(ip) {;
-        this.multiplayerManager.start(ip);
+    connectOnline(ip, playerName) {;
+        this.multiplayerManager.start(ip, playerName);
     }
 }
 

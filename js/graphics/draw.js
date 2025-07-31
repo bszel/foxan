@@ -16,8 +16,9 @@ export function drawCircle(ctx, x, y, radius, color) {
     ctx.fill();
 }
 
-export function drawText(ctx, text, x, y, fontSize, fontType) {
+export function drawText(ctx, text, x, y, fontSize, fontType, textAlign, color) {
     ctx.font = fontSize + " " + fontType;
-    ctx.fillStyle = "black";
+    ctx.fillStyle = color;
+    ctx.textAlign = textAlign;
     ctx.fillText(text, x, y);
 }

@@ -1,4 +1,4 @@
-import { drawCircle, drawRect } from "../graphics/draw.js";
+import { drawCircle, drawRect, drawText } from "../graphics/draw.js";
 import { Sprite } from "../graphics/sprites.js";
 import { subtractVectors } from "../utils/math.js";
 
@@ -16,6 +16,7 @@ export class FoxanObject {
         this.restitution = options.restitution ?? 0.3;
         this.rotatable = options.rotatable ?? true;
         this.sprite = options.sprite ?? null;
+        this.name = options.name ?? null;
 
         if (this.shape === 'rect') {
             this.width = options.width;
@@ -111,6 +112,20 @@ export class FoxanObject {
                     this.color
                 );
                 break;
+        }
+    }
+
+    drawName(ctx) {
+        if (this.name) {
+            drawText(ctx,
+                this.name,
+                this.position.x,
+                this.position.y - 40,
+                "20px",
+                "Consolas",
+                "center",
+                "#752709ff"
+            );
         }
     }
 }

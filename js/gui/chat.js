@@ -1,7 +1,15 @@
+import { setSuspendKeys } from "../core/keyboard.js";
+
 export function initializeChat(foxan) {
     const chatTextInput = document.getElementById('chat-text-input');
     const chatTextSubmit = document.getElementById('chat-text-submit');
 
+    chatTextInput.addEventListener('focus', () => {
+        setSuspendKeys(true);
+    });
+    chatTextInput.addEventListener('blur', () => {
+        setSuspendKeys(false);
+    });
     chatTextInput.addEventListener('keydown', (event) => {
         if (event.key === "Enter") {
             handleTextSubmit();

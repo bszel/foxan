@@ -11,7 +11,7 @@ export class MultiplayerManager {
         this.chatManager = null;
     }
 
-    start(ip) {
+    start(ip, playerName) {
         this.ws = new WebSocket(`wss://${ip}`);
 
         this.ws.addEventListener('open', () => {
@@ -32,7 +32,7 @@ export class MultiplayerManager {
                     objects.push(object);
                 });
                 this.session.map = objects;
-                this.foxan.startGame(this.session.map, playerID);
+                this.foxan.startGame(this.session.map, playerID, playerName);
                 this.session.player = this.foxan.player;
                 this.session.players = [this.session.player];
             }
