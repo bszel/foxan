@@ -5,34 +5,71 @@ export class ServerManager {
         this.players = [];
         this.mapManager = new MapManager;
         this.currentID = 100;
+        this.sessions = [];
     }
 
     sendInitialData(ws) {
         console.log('New websocket connection');
         const message = {
+            type: 'initial',
             objects: this.mapManager.getObjects(),
             playerID: this.getUniqueID()
         }
         ws.send(JSON.stringify(message));
     }
 
-    handleMessage(ws, message, session) {
-        const object = JSON.parse(message);
+    handleMessage(ws, mess, session) {
+        const message = JSON.parse(mess);
+        if (message.type == 'player-update') {
+            this.handlePlayerUpdate(ws, message.player, session);
+        }
+        else if (message.type == 'chat-message') {
+            this.handleChatMessage(message.chatMessage);
+        }
+    }
+
+    handlePlayerUpdate(ws, player, session) {
         if (!session.player) {
-            session.player = object;
+            session.player = player;
             this.players.push(session.player);
-            console.log(`Player ${session.player.id} joined`);
+            console.log(`Player ${session.player.id} has joined`);
+            const message = {
+                playerName: 'SERVER',
+                message: `Player ${session.player.id} has joined`
+            };
+            this.handleChatMessage(message);
         }
         else {
-            Object.assign(session.player, object);
+            Object.assign(session.player, player);
         }
-        ws.send(JSON.stringify(this.players));
+        const messagePlayers = {
+            type: 'player-update',
+            players: this.players
+        };
+        ws.send(JSON.stringify(messagePlayers));
+        const messageText = {
+            type: 'chat-message',
+            messages: session.chatMessageQueue
+        };
+        session.chatMessageQueue = [];
+        ws.send(JSON.stringify(messageText));
+    }
+
+    handleChatMessage(message) {
+        for (const session of this.sessions) {
+            session.chatMessageQueue.push(message);
+        }
     }
 
     handleClose(session) {
         const index = this.players.indexOf(session.player);
         this.players.splice(index, 1);
-        console.log(`Player ${session.player.id} left`);
+        console.log(`Player ${session.player.id} has disconnected`);
+        const message = {
+            playerName: 'SERVER',
+            message: `Player ${session.player.id} has disconnected`
+        };
+        this.handleChatMessage(message);
     }
 
     getUniqueID() {

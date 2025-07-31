@@ -10,6 +10,7 @@ import { PhysicsEngine } from './physics/pysicsengine.js';
 import { initializeButtons } from './gui/buttons.js';
 import { MapEditor } from './mapeditor/mapeditor.js';
 import { MultiplayerManager } from './online/online.js';
+import { initializeChat } from './gui/chat.js';
 
 class Foxan {
     constructor() {
@@ -21,6 +22,7 @@ class Foxan {
         this.background = new Background('./resources/images/background.png');
         this.playerSprite = new Sprite(138, 72, './resources/sprites/foxsprite.png');
         initializeButtons(this);
+        initializeChat(this);
         this.state = 'menu';
         this.engine.start(() => this.update());
     }
@@ -31,7 +33,7 @@ class Foxan {
             this.playerController.update();
             this.physics.update([...this.objects, ...this.players]);
             this.render([...this.objects, ...this.players]);
-            this.multiplayerManager.sendObject(this.player);
+            this.multiplayerManager.sendPlayer(this.player);
         }
         else if (this.state == 'editor') {
             this.mapEditor.update();

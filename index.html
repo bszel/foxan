@@ -9,22 +9,31 @@
         <script type="module" src="js/main.js"></script>
         <div id="menu-section">
             <button id="start-button">Start</button>
-            <button id="exit-button" hidden="true">Exit</button>
+            <button id="exit-button" hidden>Exit</button>
             <button id="map-editor-button">Map Editor</button>
-            <button id="back-to-map-editor-button" hidden="true">Back to Map Editor</button>
+            <button id="back-to-map-editor-button" hidden>Back to Map Editor</button>
             <button id="multiplayer-button">Multiplayer</button>
-            <div id="multiplayer-ip-section" hidden="true">
+            <div id="multiplayer-ip-section" hidden>
                 <label for="multiplayer-ip-text">Server IP: </label>
                 <input type="text" id="multiplayer-ip-text">
                 <input type="submit" id="multiplayer-ip-submit" value="Connect">
             </div>
-            <div id="map-editor-section" hidden="true">
+            <div id="map-editor-section" hidden>
                 <div id="add-objects-section">
                     <button id="add-rectangle-button">Add Rectangle</button>
                     <button id="add-circle-button">Add Circle</button>
                 </div>
-                <div id="selected-attributes-section" hidden="true">
+                <div id="selected-attributes-section" hidden>
                 </div>
+            </div>
+        </div>
+        <div id="canvas-section"></div>
+        <div id="chat-section" hidden>
+            <div id="chat-history-section">      
+            </div>
+            <div id="chat-text-section">
+                <input id="chat-text-input" placeholder="Chat...">
+                <input type="submit" id="chat-text-submit" value="Send">
             </div>
         </div>
     </body>

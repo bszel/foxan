@@ -8,7 +8,8 @@ export class Screen {
         this.canvas.id = 'game-canvas';
         this.canvas.width = width;
         this.canvas.height = height;
-        document.body.appendChild(this.canvas);
+        const canvasSection = document.getElementById('canvas-section');
+        canvasSection.appendChild(this.canvas);
     }
 
     clear() {

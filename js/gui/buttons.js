@@ -11,6 +11,7 @@ export function initializeButtons(foxan) {
     const multiplayerButton = document.getElementById('multiplayer-button');
     const multiplayerIPSection = document.getElementById('multiplayer-ip-section');
     const multiplayerIPSubmit = document.getElementById('multiplayer-ip-submit');
+    const chatSection = document.getElementById('chat-section');
     startButton.onclick = function () {
         let objects = foxan.mapEditor.objects;
         if (objects.length == 0) {
@@ -32,6 +33,7 @@ export function initializeButtons(foxan) {
         backToMapEditorButton.hidden = true;
         multiplayerButton.hidden = false;
         multiplayerIPSection.hidden = true;
+        chatSection.hidden = true;
     };
     mapEditorButton.onclick = function () {
         mapEditorSection.hidden = false;
@@ -65,5 +67,6 @@ export function initializeButtons(foxan) {
         const ip = document.getElementById('multiplayer-ip-text').value;
         multiplayerIPSection.hidden = true;
         foxan.connectOnline(ip);
+        chatSection.hidden = false;
     }
 }

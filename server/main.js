@@ -17,6 +17,7 @@ const wss = new WebSocketServer({ server });
 const serverManager = new ServerManager();
 wss.on('connection', (ws) => {
     const session = new FoxanSession();
+    serverManager.sessions.push(session);
     serverManager.sendInitialData(ws);
 
     ws.on('message', (message) => {
