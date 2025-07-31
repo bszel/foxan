@@ -13,7 +13,6 @@ import { MultiplayerManager } from './online/online.js';
 
 class Foxan {
     constructor() {
-        this.playerID = Math.floor(Math.random() * 1000) + 100; // temporary fix to player id server assignment
         this.screen = new Screen(1600, 800);
         this.engine = new GameEngine();
         this.physics = new PhysicsEngine();
@@ -30,20 +29,18 @@ class Foxan {
         if (this.state == 'menu') return;
         else if (this.state == 'game') {
             this.playerController.update();
-            this.physics.update(this.objects);
-            this.render();
-            if (this.multiplayerManager.online && this.player) {
-                this.multiplayerManager.sendObject(this.player);
-            }
+            this.physics.update([...this.objects, ...this.players]);
+            this.render([...this.objects, ...this.players]);
+            this.multiplayerManager.sendObject(this.player);
         }
         else if (this.state == 'editor') {
             this.mapEditor.update();
         }
     }
 
-    render() {
-        this.renderObjects(this.objects);
-        this.renderSprites(this.objects);
+    render(objects) {
+        this.renderObjects(objects);
+        this.renderSprites(objects);
         drawContactPoints(this.screen.ctx, this.physics.getContacts());
         debugText(this.screen.ctx, this.player);
     }
@@ -62,12 +59,12 @@ class Foxan {
         objects.forEach(obj => obj.draw(this.screen.ctx));
     }
 
-    startGame(objects) {
+    startGame(objects, playerID) {
         this.mapEditor.exit();
-        this.player = createCircle(this.playerID, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false, sprite: this.playerSprite });
+        this.player = createCircle(playerID, 500, 300, 30, { color: '#ffffff', isPlayer: true, mass: 10, friction: 0.3, rotatable: false, sprite: this.playerSprite });
         this.playerController = new PlayerController(this.player, this.playerSprite);
         this.objects = objects;
-        this.objects.push(this.player);
+        this.players = [this.player];
         this.state = 'game';
     }
 
@@ -80,8 +77,7 @@ class Foxan {
 
     startEditor(keepObjects) {
         if (keepObjects) {
-            const objects = this.objects.filter(object => object.isPlayer === false);
-            this.mapEditor.start(objects);
+            this.mapEditor.start(this.objects);
         }
         else {
             this.mapEditor.start([]);
@@ -91,7 +87,6 @@ class Foxan {
 
     connectOnline(ip) {;
         this.multiplayerManager.start(ip);
-        this.startGame([])
     }
 }
 

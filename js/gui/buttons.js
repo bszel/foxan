@@ -16,7 +16,7 @@ export function initializeButtons(foxan) {
         if (objects.length == 0) {
             objects = createObjects();
         }
-        foxan.startGame(objects);
+        foxan.startGame(objects, 0);
         startButton.hidden = true;
         exitButton.hidden = false;
         mapEditorSection.hidden = true;

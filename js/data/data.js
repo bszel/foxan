@@ -24,3 +24,18 @@ export function createObjects() {
 
     return objects;
 }
+
+export function multiplayerMap1() {
+    let ground1 = createRectangle(1, 700, 700, 1600, 50, { color: '#000000', rotation: 45 });
+    let ground2 = createRectangle(4, 1200, 400, 50, 600, { color: '#000000', rotation: 20 });
+    let ground3 = createRectangle(5, 800, 700, 1600, 50, { color: '#000000', friction: 0 });
+    let circle = createCircle(8, 900, 450, 100, { color: '#000000' });
+    
+    let objects = [];
+    objects.push(ground1);
+    objects.push(ground2);
+    objects.push(ground3);
+    objects.push(circle);
+
+    return objects;
+}
